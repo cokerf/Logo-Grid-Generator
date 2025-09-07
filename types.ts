@@ -1,4 +1,3 @@
-
 export interface Point {
   x: number;
   y: number;
@@ -22,4 +21,31 @@ export interface ParsedSVG {
   width: number;
   height: number;
   paths: SVGPathData[];
+}
+
+export type Theme = 'light' | 'dark';
+
+export interface CustomizationOptions {
+  showFill: boolean;
+  path: {
+    stroke: string;
+    strokeWidth: number;
+  };
+  anchors: {
+    color: string;
+    size: number;
+  };
+  handles: {
+    color: string;
+    width: number;
+  };
+  outlines: {
+    color: string;
+    width: number;
+    style: 'solid' | 'dashed';
+  };
+  gridlines: {
+    color: string;
+    width: number;
+  };
 }

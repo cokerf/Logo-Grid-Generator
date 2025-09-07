@@ -1,60 +1,61 @@
-
 import React from 'react';
-import type { ParsedSVG, Point, Handle } from '../types';
+import type { ParsedSVG, Point, Handle, CustomizationOptions, Theme } from '../types';
 
 interface CanvasProps {
   svgData: ParsedSVG | null;
+  svgRef: React.RefObject<SVGSVGElement>;
   showAnchors: boolean;
   showHandles: boolean;
-  showOutlines:boolean;
+  showOutlines: boolean;
   showGridlines: boolean;
   onUploadClick: () => void;
   error: string | null;
+  customization: CustomizationOptions;
+  theme: Theme;
 }
 
-const ANCHOR_SIZE = 8;
-
-const Gridlines: React.FC<{ width: number, height: number }> = ({ width, height }) => {
+const Gridlines: React.FC<{ width: number, height: number, options: CustomizationOptions['gridlines'] }> = ({ width, height, options }) => {
     const step = Math.min(width, height) / 20;
     const lines = [];
 
     for (let i = 0; i <= width; i += step) {
-        lines.push(<line key={`v-${i}`} x1={i} y1={0} x2={i} y2={height} className="stroke-slate-700/70" strokeWidth="0.5" />);
+        lines.push(<line key={`v-${i}`} x1={i} y1={0} x2={i} y2={height} stroke={options.color} strokeWidth={options.width} />);
     }
     for (let i = 0; i <= height; i += step) {
-        lines.push(<line key={`h-${i}`} x1={0} y1={i} x2={width} y2={i} className="stroke-slate-700/70" strokeWidth="0.5" />);
+        lines.push(<line key={`h-${i}`} x1={0} y1={i} x2={width} y2={i} stroke={options.color} strokeWidth={options.width} />);
     }
     return <g>{lines}</g>;
 };
 
-const Anchors: React.FC<{ points: Point[] }> = ({ points }) => (
+const Anchors: React.FC<{ points: Point[], options: CustomizationOptions['anchors'], theme: Theme }> = ({ points, options, theme }) => (
   <g>
     {points.map((p, i) => (
       <rect 
         key={i} 
-        x={p.x - ANCHOR_SIZE / 2} 
-        y={p.y - ANCHOR_SIZE / 2} 
-        width={ANCHOR_SIZE} 
-        height={ANCHOR_SIZE} 
-        className="fill-cyan-400 stroke-slate-900" 
+        x={p.x - options.size / 2} 
+        y={p.y - options.size / 2} 
+        width={options.size} 
+        height={options.size} 
+        fill={options.color}
+        stroke={theme === 'dark' ? '#000' : '#FFF'}
         strokeWidth="1" 
       />
     ))}
   </g>
 );
 
-const Handles: React.FC<{ handles: Handle[] }> = ({ handles }) => (
+const Handles: React.FC<{ handles: Handle[], options: CustomizationOptions['handles'], anchorOptions: CustomizationOptions['anchors'], theme: Theme }> = ({ handles, options, anchorOptions, theme }) => (
     <g>
         {handles.map((h, i) => (
             <React.Fragment key={i}>
-                <line x1={h.start.x} y1={h.start.y} x2={h.end.x} y2={h.end.y} className="stroke-fuchsia-500" strokeWidth="1" />
-                <circle cx={h.end.x} cy={h.end.y} r={ANCHOR_SIZE / 2.5} className="fill-fuchsia-500 stroke-slate-900" strokeWidth="1" />
+                <line x1={h.start.x} y1={h.start.y} x2={h.end.x} y2={h.end.y} stroke={options.color} strokeWidth={options.width} />
+                <circle cx={h.end.x} cy={h.end.y} r={anchorOptions.size / 2.5} fill={options.color} stroke={theme === 'dark' ? '#000' : '#FFF'} strokeWidth="1" />
             </React.Fragment>
         ))}
     </g>
 );
 
-const Outlines: React.FC<{ path: { boundingBox: SVGRect | null } }> = ({ path }) => {
+const Outlines: React.FC<{ path: { boundingBox: SVGRect | null }, options: CustomizationOptions['outlines'] }> = ({ path, options }) => {
     if (!path.boundingBox) return null;
     const { x, y, width, height } = path.boundingBox;
     return (
@@ -63,35 +64,36 @@ const Outlines: React.FC<{ path: { boundingBox: SVGRect | null } }> = ({ path })
             y={y}
             width={width}
             height={height}
-            className="fill-none stroke-red-500"
-            strokeWidth="1"
-            strokeDasharray="4 2"
+            fill="none"
+            stroke={options.color}
+            strokeWidth={options.width}
+            strokeDasharray={options.style === 'dashed' ? '4 2' : 'none'}
         />
     );
 };
 
 
-export const Canvas: React.FC<CanvasProps> = ({ svgData, showAnchors, showHandles, showOutlines, showGridlines, onUploadClick, error }) => {
+export const Canvas: React.FC<CanvasProps> = ({ svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, onUploadClick, error, customization, theme }) => {
   if (error) {
     return (
-        <div className="w-full h-full max-w-3xl bg-slate-800/50 rounded-lg border-2 border-dashed border-red-500/50 flex flex-col items-center justify-center p-8 text-center text-red-400">
+        <div className="w-full h-full max-w-3xl bg-gray-200 dark:bg-gray-800 rounded-lg border-2 border-dashed border-red-500/50 flex flex-col items-center justify-center p-8 text-center text-red-500 dark:text-red-400">
             <h2 className="text-xl font-bold mb-2">Error</h2>
-            <p className="text-slate-300">{error}</p>
+            <p className="text-gray-600 dark:text-gray-300">{error}</p>
         </div>
     );
   }
   
   if (!svgData) {
     return (
-      <div className="w-full h-full max-w-3xl bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700/80 flex flex-col items-center justify-center p-8 text-center text-slate-400">
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 mb-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="w-full h-full max-w-3xl bg-gray-200/50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-400 dark:border-gray-700 flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 mb-4 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        <h2 className="text-xl font-bold text-slate-300 mb-2">Logo Grid Generator</h2>
+        <h2 className="text-xl font-bold text-black dark:text-white mb-2">Logo Grid Generator</h2>
         <p className="mb-6">Upload an SVG file to begin analyzing its structure.</p>
         <button
           onClick={onUploadClick}
-          className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+          className="bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 font-semibold py-2 px-6 rounded-lg transition-colors"
         >
           Upload SVG
         </button>
@@ -102,20 +104,24 @@ export const Canvas: React.FC<CanvasProps> = ({ svgData, showAnchors, showHandle
   return (
     <div className="w-full h-full p-4 flex items-center justify-center">
       <svg
+        ref={svgRef}
         viewBox={svgData.viewBox}
         className="max-w-full max-h-full"
         preserveAspectRatio="xMidYMid meet"
       >
-        {showGridlines && <Gridlines width={svgData.width} height={svgData.height} />}
+        {showGridlines && <Gridlines width={svgData.width} height={svgData.height} options={customization.gridlines} />}
 
-        {svgData.paths.map((path, i) => (
-          <g key={i}>
-            <path d={path.d} className="fill-blue-500/20 stroke-blue-400" strokeWidth="1" />
-            {showOutlines && <Outlines path={path} />}
-            {showAnchors && <Anchors points={path.points} />}
-            {showHandles && <Handles handles={path.handles} />}
-          </g>
-        ))}
+        {svgData.paths.map((path, i) => {
+            const fillColor = customization.showFill ? customization.path.stroke + '33' : 'none'; // semi-transparent
+            return (
+                <g key={i}>
+                    <path d={path.d} fill={fillColor} stroke={customization.path.stroke} strokeWidth={customization.path.strokeWidth} />
+                    {showOutlines && <Outlines path={path} options={customization.outlines} />}
+                    {showAnchors && <Anchors points={path.points} options={customization.anchors} theme={theme} />}
+                    {showHandles && <Handles handles={path.handles} options={customization.handles} anchorOptions={customization.anchors} theme={theme} />}
+                </g>
+            )
+        })}
       </svg>
     </div>
   );
