@@ -17,6 +17,7 @@ const initialCustomization: CustomizationOptions = {
 
 export default function App(): JSX.Element {
   const [svgData, setSvgData] = useState<ParsedSVG | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showAnchors, setShowAnchors] = useState<boolean>(false);
   const [showHandles, setShowHandles] = useState<boolean>(false);
   const [showOutlines, setShowOutlines] = useState<boolean>(false);
@@ -25,44 +26,37 @@ export default function App(): JSX.Element {
   const [openPanel, setOpenPanel] = useState<string | null>(null);
   const [customization, setCustomization] = useState<CustomizationOptions>(initialCustomization);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   
-  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type === 'image/svg+xml') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
+  useEffect(() => {
+    window.onmessage = (event) => {
+      const { type, svgContent, nodeId } = event.data.pluginMessage;
+      if (type === 'selection') {
         try {
-          const parsedData = parseSVG(content);
-          if (parsedData.paths.length === 0) {
-            setError("No paths found in the SVG. Please use an SVG with <path> elements.");
+          const parsedData = parseSVG(svgContent);
+           if (parsedData.paths.length === 0) {
+            setError("No paths found in the selected vector. Please select a vector with <path> elements.");
             setSvgData(null);
+            setSelectedNodeId(null);
           } else {
             setSvgData(parsedData);
+            setSelectedNodeId(nodeId);
             setError(null);
           }
         } catch (err) {
-          setError("Failed to parse SVG. Please check the file format.");
-          setSvgData(null);
-          console.error(err);
+            setError("Failed to parse the selected vector. Please check its format.");
+            setSvgData(null);
+            setSelectedNodeId(null);
+            console.error(err);
         }
-      };
-      reader.onerror = () => {
-        setError("Failed to read the file.");
+      } else if (type === 'deselection') {
         setSvgData(null);
-      };
-      reader.readAsText(file);
-    } else {
-        setError("Please select a valid SVG file.");
-        setSvgData(null);
-    }
+        setSelectedNodeId(null);
+        setError(null);
+      }
+    };
   }, []);
 
-  const handleUploadClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
 
   const generateAll = useCallback(() => {
     setShowAnchors(true);
@@ -71,59 +65,11 @@ export default function App(): JSX.Element {
     setShowGridlines(true);
   }, []);
 
-  const handleDownload = useCallback((format: 'svg' | 'png') => {
-    if (!svgRef.current || !svgData) return;
+  const handleGenerateFigmaLayers = useCallback(() => {
+    if (!svgData) return;
+    parent.postMessage({ pluginMessage: { type: 'generate-layers', svgData, customization } }, '*');
+  }, [svgData, customization]);
 
-    const svgElement = svgRef.current;
-    const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
-    
-    // Set explicit size for export
-    svgClone.setAttribute('width', svgData.width.toString());
-    svgClone.setAttribute('height', svgData.height.toString());
-    
-    // Apply background for PNG
-    if(format === 'png') {
-      const style = document.createElement('style');
-      style.textContent = `svg { background-color: ${customization.canvasBackground}; }`;
-      svgClone.prepend(style);
-    }
-
-    const svgString = new XMLSerializer().serializeToString(svgClone);
-    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-
-    const download = (href: string, extension: string) => {
-        const link = document.createElement('a');
-        link.href = href;
-        link.download = `logo-grid.${extension}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(href);
-    }
-
-    if (format === 'svg') {
-      download(url, 'svg');
-    } else {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = svgData.width;
-        canvas.height = svgData.height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          const pngUrl = canvas.toDataURL('image/png');
-          download(pngUrl, 'png');
-        }
-        URL.revokeObjectURL(url); // Revoke blob URL after use
-      };
-      img.onerror = () => {
-         URL.revokeObjectURL(url);
-      };
-      img.src = url;
-    }
-  }, [svgData, customization.canvasBackground]);
 
   // Effect to add bounding boxes after parsing
   useEffect(() => {
@@ -151,7 +97,7 @@ export default function App(): JSX.Element {
 
   const handleHandleMove = useCallback((pathIndex: number, handleIndex: number, newPosition: Point) => {
     setSvgData(currentSvgData => {
-      if (!currentSvgData) return null;
+      if (!currentSvgData || !selectedNodeId) return null;
 
       const newPaths = [...currentSvgData.paths];
       const path = newPaths[pathIndex];
@@ -160,9 +106,7 @@ export default function App(): JSX.Element {
 
       const handle = path.handles[handleIndex];
 
-      // Deep clone the segments to avoid direct mutation
       const newSegments = JSON.parse(JSON.stringify(path.segments));
-
       const segmentToUpdate = newSegments[handle.segmentIndex];
       if (!segmentToUpdate) return currentSvgData;
 
@@ -171,9 +115,8 @@ export default function App(): JSX.Element {
 
       const newD = segmentsToD(newSegments);
       
-      // Re-parse just the d string, which is much more efficient and stable
       const { points: newPoints, handles: newHandles, segments: updatedSegments } = parsePathD(newD);
-
+      
       newPaths[pathIndex] = {
         ...path,
         d: newD,
@@ -182,23 +125,24 @@ export default function App(): JSX.Element {
         handles: newHandles,
       };
 
+      // Figma node will be updated via a different mechanism, for now we just update the UI preview's 'd'
+      // To update figma in real-time, we could post a message here, but it might be slow.
+      // A better approach is to have an "Apply" button or update onMouseUp.
+      // For this implementation, we will update on drag for real-time feedback.
+      if(newPaths.length === 1) { // For simplicity, only update single-path vectors in real time.
+         parent.postMessage({ pluginMessage: { type: 'update-path', nodeId: selectedNodeId, newD } }, '*');
+      }
+
       return {
         ...currentSvgData,
         paths: newPaths,
       };
     });
-  }, []);
+  }, [selectedNodeId]);
 
 
   return (
     <div className="flex h-screen w-screen font-sans text-black bg-white transition-colors duration-300">
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        accept="image/svg+xml"
-      />
       <ControlPanel
         showAnchors={showAnchors}
         setShowAnchors={setShowAnchors}
@@ -209,13 +153,12 @@ export default function App(): JSX.Element {
         showGridlines={showGridlines}
         setShowGridlines={setShowGridlines}
         onGenerateAll={generateAll}
-        onUploadClick={handleUploadClick}
+        onGenerateFigmaLayers={handleGenerateFigmaLayers}
         hasSVG={!!svgData}
         customization={customization}
         setCustomization={setCustomization}
         openPanel={openPanel}
         setOpenPanel={setOpenPanel}
-        onDownload={handleDownload}
       />
       <main className="flex-1 flex items-center justify-center p-4 bg-gray-100 transition-colors duration-300">
         <Canvas 
@@ -225,7 +168,6 @@ export default function App(): JSX.Element {
           showHandles={showHandles}
           showOutlines={showOutlines}
           showGridlines={showGridlines}
-          onUploadClick={handleUploadClick}
           error={error}
           customization={customization}
           onHandleMove={handleHandleMove}

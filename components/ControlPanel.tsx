@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from 'react';
+import React from 'react';
 import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, LogoIcon } from './icons';
 import type { CustomizationOptions } from '../types';
 
@@ -12,13 +12,12 @@ interface ControlPanelProps {
   showGridlines: boolean;
   setShowGridlines: (value: boolean) => void;
   onGenerateAll: () => void;
-  onUploadClick: () => void;
+  onGenerateFigmaLayers: () => void;
   hasSVG: boolean;
   customization: CustomizationOptions;
   setCustomization: (options: CustomizationOptions) => void;
   openPanel: string | null;
   setOpenPanel: (panel: string | null) => void;
-  onDownload: (format: 'svg' | 'png') => void;
 }
 
 const ToggleButton: React.FC<{
@@ -32,6 +31,8 @@ const ToggleButton: React.FC<{
     className={`flex flex-1 flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors duration-200 ${
       isActive ? 'bg-gray-300' : 'bg-gray-100 hover:bg-gray-200'
     }`}
+    aria-label={`Toggle ${label}`}
+    aria-pressed={isActive}
   >
     <Icon className={`w-6 h-6 ${isActive ? 'text-black' : 'text-gray-500'}`} />
     <span className={`text-xs ${isActive ? 'text-black' : 'text-gray-500'}`}>{label}</span>
@@ -80,8 +81,8 @@ const CustomizeSection: React.FC<{title: string, children: React.ReactNode}> = (
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   showAnchors, setShowAnchors, showHandles, setShowHandles,
   showOutlines, setShowOutlines, showGridlines, setShowGridlines,
-  onGenerateAll, onUploadClick, hasSVG,
-  customization, setCustomization, openPanel, setOpenPanel, onDownload
+  onGenerateAll, onGenerateFigmaLayers, hasSVG,
+  customization, setCustomization, openPanel, setOpenPanel
 }) => {
 
   const handleCustomizationChange = (section: keyof CustomizationOptions, key: string, value: any) => {
@@ -100,7 +101,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   };
 
   return (
-    <aside className="w-80 bg-white border-r border-gray-200 p-4 flex flex-col gap-4 shadow-2xl">
+    <aside className="w-80 bg-white p-4 flex flex-col gap-4">
       <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
         <LogoIcon className="w-6 h-6"/>
         <h1 className="text-lg font-semibold">Logo Grid Generator</h1>
@@ -195,28 +196,19 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       </CollapsiblePanel>
       
       <div className="mt-auto flex flex-col gap-3 pt-4 border-t border-gray-200">
-        {hasSVG && (
-            <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => onDownload('svg')} className="w-full text-center bg-gray-200 hover:bg-gray-300 font-semibold py-3 px-4 rounded-lg transition-colors duration-200">
-                    Download SVG
-                </button>
-                <button onClick={() => onDownload('png')} className="w-full text-center bg-gray-200 hover:bg-gray-300 font-semibold py-3 px-4 rounded-lg transition-colors duration-200">
-                    Download PNG
-                </button>
-            </div>
-        )}
-        <button 
-          onClick={onUploadClick}
-          className="w-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-        >
-          <span>{hasSVG ? "Upload New SVG" : "Upload SVG"}</span>
-        </button>
         <button
           onClick={onGenerateAll}
           disabled={!hasSVG}
+          className="w-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
+        >
+          <span>Toggle All Previews</span>
+        </button>
+        <button
+          onClick={onGenerateFigmaLayers}
+          disabled={!hasSVG}
           className="w-full bg-black text-white hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
         >
-          <span>Generate All</span>
+          <span>Create Figma Layers</span>
         </button>
       </div>
     </aside>
