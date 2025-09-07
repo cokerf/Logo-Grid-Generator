@@ -7,12 +7,12 @@ import { parseSVG, segmentsToD, parsePathD } from './services/svgParser';
 const initialCustomization: CustomizationOptions = {
   showFill: true,
   fillColor: '#cccccc33',
-  path: { stroke: '#888888', strokeWidth: 1 },
-  anchors: { color: '#000000', size: 8, shape: 'square' },
-  handles: { color: '#888888', width: 1 },
-  outlines: { color: '#000000', width: 1, style: 'dashed' },
-  gridlines: { color: '#cccccc', width: 0.5, style: 'lines' },
-  canvasBackground: '#f9fafb',
+  path: { stroke: '#888888FF', strokeWidth: 1 },
+  anchors: { color: '#000000FF', size: 8, shape: 'square' },
+  handles: { color: '#888888FF', width: 1 },
+  outlines: { color: '#000000FF', width: 1, style: 'dashed' },
+  gridlines: { color: '#ccccccFF', width: 0.5, style: 'lines' },
+  canvasBackground: '#f9fafbFF',
 };
 
 export default function App(): JSX.Element {

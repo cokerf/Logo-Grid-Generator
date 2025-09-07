@@ -4,6 +4,8 @@ declare const figma: any;
 declare const __html__: any;
 type VectorNode = any;
 type RGB = { r: number; g: number; b: number };
+type SolidPaint = any;
+
 
 // This file holds the main code for the plugin. It has access to the Figma API.
 
@@ -70,13 +72,18 @@ figma.ui.onmessage = async (msg) => {
     group.x = vector.x;
     group.y = vector.y;
 
-    const hexToFigmaColor = (hex: string): RGB => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
+    const hexToFigmaPaint = (hex: string): SolidPaint => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})?$/i.exec(hex);
+        if (!result) {
+            return { type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 };
+        }
+        const color = {
             r: parseInt(result[1], 16) / 255,
             g: parseInt(result[2], 16) / 255,
             b: parseInt(result[3], 16) / 255
-        } : { r: 0, g: 0, b: 0 };
+        };
+        const opacity = result[4] ? parseInt(result[4], 16) / 255 : 1;
+        return { type: 'SOLID', color, opacity };
     }
 
     // -- Create Gridlines --
@@ -91,7 +98,7 @@ figma.ui.onmessage = async (msg) => {
             line.x = i;
             line.resize(height, 0);
             line.rotation = 90;
-            line.strokes = [{ type: 'SOLID', color: hexToFigmaColor(customization.gridlines.color) }];
+            line.strokes = [hexToFigmaPaint(customization.gridlines.color)];
             line.strokeWeight = customization.gridlines.width;
             gridGroup.appendChild(line);
         }
@@ -99,7 +106,7 @@ figma.ui.onmessage = async (msg) => {
             const line = figma.createLine();
             line.y = i;
             line.resize(width, 0);
-            line.strokes = [{ type: 'SOLID', color: hexToFigmaColor(customization.gridlines.color) }];
+            line.strokes = [hexToFigmaPaint(customization.gridlines.color)];
             line.strokeWeight = customization.gridlines.width;
             gridGroup.appendChild(line);
         }
@@ -115,7 +122,7 @@ figma.ui.onmessage = async (msg) => {
             outline.y = bbox.y;
             outline.resize(bbox.width, bbox.height);
             outline.fills = [];
-            outline.strokes = [{ type: 'SOLID', color: hexToFigmaColor(customization.outlines.color) }];
+            outline.strokes = [hexToFigmaPaint(customization.outlines.color)];
             outline.strokeWeight = customization.outlines.width;
             if (customization.outlines.style === 'dashed') {
                 outline.dashPattern = [4, 2];
@@ -137,7 +144,7 @@ figma.ui.onmessage = async (msg) => {
                 anchor.resize(customization.anchors.size, customization.anchors.size);
                 anchor.x = p.x - customization.anchors.size / 2;
                 anchor.y = p.y - customization.anchors.size / 2;
-                anchor.fills = [{ type: 'SOLID', color: hexToFigmaColor(customization.anchors.color) }];
+                anchor.fills = [hexToFigmaPaint(customization.anchors.color)];
                 anchorGroup.appendChild(anchor);
             });
         }
@@ -153,7 +160,7 @@ figma.ui.onmessage = async (msg) => {
                 line.y = h.start.y;
                 line.resize(Math.sqrt(Math.pow(h.end.x - h.start.x, 2) + Math.pow(h.end.y - h.start.y, 2)), 0);
                 line.rotation = Math.atan2(h.end.y - h.start.y, h.end.x - h.start.x) * 180 / Math.PI;
-                line.strokes = [{ type: 'SOLID', color: hexToFigmaColor(customization.handles.color) }];
+                line.strokes = [hexToFigmaPaint(customization.handles.color)];
                 line.strokeWeight = customization.handles.width;
                 handleGroup.appendChild(line);
 
@@ -162,7 +169,7 @@ figma.ui.onmessage = async (msg) => {
                 circle.resize(r*2, r*2);
                 circle.x = h.end.x - r;
                 circle.y = h.end.y - r;
-                circle.fills = [{ type: 'SOLID', color: hexToFigmaColor(customization.handles.color)}];
+                circle.fills = [hexToFigmaPaint(customization.handles.color)];
                 handleGroup.appendChild(circle);
             });
         }

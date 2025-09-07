@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, LogoIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon } from './icons';
 import type { CustomizationOptions, ParsedSVG } from '../types';
+import { ColorInput } from './ColorInput';
 
 interface ControlPanelProps {
   showAnchors: boolean;
@@ -70,9 +71,9 @@ const CollapsiblePanel: React.FC<{
 );
 
 const SettingRow: React.FC<{label: string, children: React.ReactNode}> = ({label, children}) => (
-    <div className="flex items-center justify-between text-sm">
-        <label className="text-gray-600">{label}</label>
-        {children}
+    <div className="flex items-center justify-between text-sm gap-4">
+        <label className="text-gray-600 shrink-0">{label}</label>
+        <div className="flex-1">{children}</div>
     </div>
 );
 
@@ -180,12 +181,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <input type="checkbox" checked={customization.showFill} onChange={e => handleSimpleCustomizationChange('showFill', e.target.checked)} className="toggle-checkbox" />
             </SettingRow>
              <SettingRow label="Color">
-                <input type="color" value={customization.fillColor} onChange={e => handleSimpleCustomizationChange('fillColor', e.target.value)} className="w-8 h-8"/>
+                <ColorInput value={customization.fillColor} onChange={value => handleSimpleCustomizationChange('fillColor', value)} />
             </SettingRow>
         </CustomizeSection>
         <CustomizeSection title="Path">
             <SettingRow label="Color">
-                <input type="color" value={customization.path.stroke} onChange={e => handleCustomizationChange('path', 'stroke', e.target.value)} className="w-8 h-8"/>
+                <ColorInput value={customization.path.stroke} onChange={value => handleCustomizationChange('path', 'stroke', value)} />
             </SettingRow>
              <SettingRow label="Width">
                 <input type="range" min="0.1" max="10" step="0.1" value={customization.path.strokeWidth} onChange={e => handleCustomizationChange('path', 'strokeWidth', parseFloat(e.target.value))} />
@@ -193,7 +194,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </CustomizeSection>
         <CustomizeSection title="Anchors">
             <SettingRow label="Color">
-                <input type="color" value={customization.anchors.color} onChange={e => handleCustomizationChange('anchors', 'color', e.target.value)} className="w-8 h-8"/>
+                <ColorInput value={customization.anchors.color} onChange={value => handleCustomizationChange('anchors', 'color', value)} />
             </SettingRow>
              <SettingRow label="Size">
                 <input type="range" min="2" max="20" step="1" value={customization.anchors.size} onChange={e => handleCustomizationChange('anchors', 'size', parseInt(e.target.value))} />
@@ -207,7 +208,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </CustomizeSection>
         <CustomizeSection title="Handles">
             <SettingRow label="Color">
-                <input type="color" value={customization.handles.color} onChange={e => handleCustomizationChange('handles', 'color', e.target.value)} className="w-8 h-8"/>
+                <ColorInput value={customization.handles.color} onChange={value => handleCustomizationChange('handles', 'color', value)} />
             </SettingRow>
              <SettingRow label="Width">
                 <input type="range" min="0.1" max="5" step="0.1" value={customization.handles.width} onChange={e => handleCustomizationChange('handles', 'width', parseFloat(e.target.value))} />
@@ -215,7 +216,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </CustomizeSection>
         <CustomizeSection title="Outlines">
             <SettingRow label="Color">
-                <input type="color" value={customization.outlines.color} onChange={e => handleCustomizationChange('outlines', 'color', e.target.value)} className="w-8 h-8"/>
+                <ColorInput value={customization.outlines.color} onChange={value => handleCustomizationChange('outlines', 'color', value)} />
             </SettingRow>
              <SettingRow label="Width">
                 <input type="range" min="0.1" max="5" step="0.1" value={customization.outlines.width} onChange={e => handleCustomizationChange('outlines', 'width', parseFloat(e.target.value))} />
@@ -229,7 +230,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </CustomizeSection>
         <CustomizeSection title="Gridlines">
             <SettingRow label="Color">
-                <input type="color" value={customization.gridlines.color} onChange={e => handleCustomizationChange('gridlines', 'color', e.target.value)} className="w-8 h-8"/>
+                 <ColorInput value={customization.gridlines.color} onChange={value => handleCustomizationChange('gridlines', 'color', value)} />
             </SettingRow>
              <SettingRow label="Width">
                 <input type="range" min="0.1" max="3" step="0.1" value={customization.gridlines.width} onChange={e => handleCustomizationChange('gridlines', 'width', parseFloat(e.target.value))} />
@@ -251,7 +252,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       >
         <CustomizeSection title="Canvas">
             <SettingRow label="Background">
-                 <input type="color" value={customization.canvasBackground} onChange={e => handleSimpleCustomizationChange('canvasBackground', e.target.value)} className="w-8 h-8"/>
+                 <ColorInput value={customization.canvasBackground} onChange={value => handleSimpleCustomizationChange('canvasBackground', value)} />
             </SettingRow>
         </CustomizeSection>
         <CustomizeSection title="Editing">
