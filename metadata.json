@@ -1,0 +1,5 @@
+{
+  "name": "AI Logo Grid Generator",
+  "description": "An intuitive tool for designers to analyze and perfect logos. Upload an SVG to automatically generate construction grids, view anchor points and handles, and inspect outlines for precise alignment and symmetry.",
+  "requestFramePermissions": []
+}
