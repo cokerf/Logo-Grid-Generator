@@ -140,8 +140,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
   return (
     <aside className="w-80 bg-white p-4 flex flex-col gap-4 overflow-y-auto">
-      <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
-        <LogoIcon className="w-6 h-6"/>
+      <div className="flex items-center pb-2 border-b border-gray-200">
         <h1 className="text-lg font-semibold">Logo Grid Generator</h1>
       </div>
 
