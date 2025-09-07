@@ -86,7 +86,7 @@ export const parseSVG = (svgContent: string): ParsedSVG => {
 };
 
 
-const parsePathD = (d: string): { points: Point[], handles: Handle[], segments: PathSegment[] } => {
+export const parsePathD = (d: string): { points: Point[], handles: Handle[], segments: PathSegment[] } => {
   const points: Point[] = [];
   const handles: Handle[] = [];
   const segments: PathSegment[] = [];

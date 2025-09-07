@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ControlPanel } from './components/ControlPanel';
 import { Canvas } from './components/Canvas';
 import type { ParsedSVG, CustomizationOptions, Point } from './types';
-import { parseSVG, segmentsToD } from './services/svgParser';
+import { parseSVG, segmentsToD, parsePathD } from './services/svgParser';
 
 const initialCustomization: CustomizationOptions = {
   showFill: true,
@@ -149,39 +149,45 @@ export default function App(): JSX.Element {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [svgData?.rawSVG]);
 
- const handleHandleMove = useCallback((pathIndex: number, handleIndex: number, newPosition: Point) => {
+  const handleHandleMove = useCallback((pathIndex: number, handleIndex: number, newPosition: Point) => {
     setSvgData(currentSvgData => {
-        if (!currentSvgData) return null;
+      if (!currentSvgData) return null;
 
-        const newPaths = [...currentSvgData.paths];
-        const path = newPaths[pathIndex];
-        const handle = path.handles[handleIndex];
+      const newPaths = [...currentSvgData.paths];
+      const path = newPaths[pathIndex];
 
-        // Deep clone the segments to avoid direct mutation
-        const newSegments = JSON.parse(JSON.stringify(path.segments));
-        
-        const segmentToUpdate = newSegments[handle.segmentIndex];
-        segmentToUpdate.values[handle.valueIndex] = newPosition.x;
-        segmentToUpdate.values[handle.valueIndex + 1] = newPosition.y;
+      if (!path || !path.handles[handleIndex]) return currentSvgData;
 
-        const newD = segmentsToD(newSegments);
-        
-        // Re-parse just the handles for the updated path to reflect the change
-        const { handles: newHandles } = parseSVG(`<svg><path d="${newD}"></path></svg>`).paths[0];
+      const handle = path.handles[handleIndex];
 
-        newPaths[pathIndex] = {
-            ...path,
-            d: newD,
-            segments: newSegments,
-            handles: newHandles,
-        };
+      // Deep clone the segments to avoid direct mutation
+      const newSegments = JSON.parse(JSON.stringify(path.segments));
 
-        return {
-            ...currentSvgData,
-            paths: newPaths,
-        };
+      const segmentToUpdate = newSegments[handle.segmentIndex];
+      if (!segmentToUpdate) return currentSvgData;
+
+      segmentToUpdate.values[handle.valueIndex] = newPosition.x;
+      segmentToUpdate.values[handle.valueIndex + 1] = newPosition.y;
+
+      const newD = segmentsToD(newSegments);
+      
+      // Re-parse just the d string, which is much more efficient and stable
+      const { points: newPoints, handles: newHandles, segments: updatedSegments } = parsePathD(newD);
+
+      newPaths[pathIndex] = {
+        ...path,
+        d: newD,
+        segments: updatedSegments,
+        points: newPoints,
+        handles: newHandles,
+      };
+
+      return {
+        ...currentSvgData,
+        paths: newPaths,
+      };
     });
-}, []);
+  }, []);
 
 
   return (
