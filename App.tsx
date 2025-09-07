@@ -17,7 +17,6 @@ const initialCustomization: CustomizationOptions = {
 
 export default function App(): JSX.Element {
   const [svgData, setSvgData] = useState<ParsedSVG | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showAnchors, setShowAnchors] = useState<boolean>(false);
   const [showHandles, setShowHandles] = useState<boolean>(false);
   const [showOutlines, setShowOutlines] = useState<boolean>(false);
@@ -27,34 +26,33 @@ export default function App(): JSX.Element {
   const [customization, setCustomization] = useState<CustomizationOptions>(initialCustomization);
 
   const svgRef = useRef<SVGSVGElement>(null);
-  
-  useEffect(() => {
-    window.onmessage = (event) => {
-      const { type, svgContent, nodeId } = event.data.pluginMessage;
-      if (type === 'selection') {
-        try {
-          const parsedData = parseSVG(svgContent);
-           if (parsedData.paths.length === 0) {
-            setError("No paths found in the selected vector. Please select a vector with <path> elements.");
-            setSvgData(null);
-            setSelectedNodeId(null);
-          } else {
-            setSvgData(parsedData);
-            setSelectedNodeId(nodeId);
-            setError(null);
-          }
-        } catch (err) {
-            setError("Failed to parse the selected vector. Please check its format.");
-            setSvgData(null);
-            setSelectedNodeId(null);
-            console.error(err);
+
+  const handleFileUpload = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const svgContent = e.target?.result as string;
+        if (svgContent) {
+            try {
+                const parsedData = parseSVG(svgContent);
+                if (parsedData.paths.length === 0) {
+                    setError("No paths found in the uploaded SVG. Please use an SVG with <path> elements.");
+                    setSvgData(null);
+                } else {
+                    setSvgData(parsedData);
+                    setError(null);
+                }
+            } catch (err) {
+                setError("Failed to parse the SVG file. Please check its format.");
+                setSvgData(null);
+                console.error(err);
+            }
         }
-      } else if (type === 'deselection') {
-        setSvgData(null);
-        setSelectedNodeId(null);
-        setError(null);
-      }
     };
+    reader.onerror = () => {
+        setError("Failed to read the file.");
+        setSvgData(null);
+    };
+    reader.readAsText(file);
   }, []);
 
 
@@ -64,12 +62,6 @@ export default function App(): JSX.Element {
     setShowOutlines(true);
     setShowGridlines(true);
   }, []);
-
-  const handleGenerateFigmaLayers = useCallback(() => {
-    if (!svgData) return;
-    parent.postMessage({ pluginMessage: { type: 'generate-layers', svgData, customization } }, '*');
-  }, [svgData, customization]);
-
 
   // Effect to add bounding boxes after parsing
   useEffect(() => {
@@ -97,7 +89,7 @@ export default function App(): JSX.Element {
 
   const handleHandleMove = useCallback((pathIndex: number, handleIndex: number, newPosition: Point) => {
     setSvgData(currentSvgData => {
-      if (!currentSvgData || !selectedNodeId) return null;
+      if (!currentSvgData) return null;
 
       const newPaths = [...currentSvgData.paths];
       const path = newPaths[pathIndex];
@@ -125,20 +117,12 @@ export default function App(): JSX.Element {
         handles: newHandles,
       };
 
-      // Figma node will be updated via a different mechanism, for now we just update the UI preview's 'd'
-      // To update figma in real-time, we could post a message here, but it might be slow.
-      // A better approach is to have an "Apply" button or update onMouseUp.
-      // For this implementation, we will update on drag for real-time feedback.
-      if(newPaths.length === 1) { // For simplicity, only update single-path vectors in real time.
-         parent.postMessage({ pluginMessage: { type: 'update-path', nodeId: selectedNodeId, newD } }, '*');
-      }
-
       return {
         ...currentSvgData,
         paths: newPaths,
       };
     });
-  }, [selectedNodeId]);
+  }, []);
 
 
   return (
@@ -153,12 +137,12 @@ export default function App(): JSX.Element {
         showGridlines={showGridlines}
         setShowGridlines={setShowGridlines}
         onGenerateAll={generateAll}
-        onGenerateFigmaLayers={handleGenerateFigmaLayers}
         hasSVG={!!svgData}
         customization={customization}
         setCustomization={setCustomization}
         openPanel={openPanel}
         setOpenPanel={setOpenPanel}
+        onFileUpload={handleFileUpload}
       />
       <main className="flex-1 flex items-center justify-center p-4 bg-gray-100 transition-colors duration-300">
         <Canvas 

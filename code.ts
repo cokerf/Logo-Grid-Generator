@@ -1,4 +1,9 @@
-/// <reference types="@figma/plugin-typings" />
+// FIX: Add declarations for Figma's global variables and types to resolve TypeScript errors
+// when the @figma/plugin-typings are not available in the linting environment.
+declare const figma: any;
+declare const __html__: any;
+type VectorNode = any;
+type RGB = { r: number; g: number; b: number };
 
 // This file holds the main code for the plugin. It has access to the Figma API.
 

@@ -1,5 +1,5 @@
-import React from 'react';
-import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, LogoIcon } from './icons';
+import React, { useRef } from 'react';
+import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, LogoIcon, UploadIcon } from './icons';
 import type { CustomizationOptions } from '../types';
 
 interface ControlPanelProps {
@@ -12,12 +12,12 @@ interface ControlPanelProps {
   showGridlines: boolean;
   setShowGridlines: (value: boolean) => void;
   onGenerateAll: () => void;
-  onGenerateFigmaLayers: () => void;
   hasSVG: boolean;
   customization: CustomizationOptions;
   setCustomization: (options: CustomizationOptions) => void;
   openPanel: string | null;
   setOpenPanel: (panel: string | null) => void;
+  onFileUpload: (file: File) => void;
 }
 
 const ToggleButton: React.FC<{
@@ -81,9 +81,25 @@ const CustomizeSection: React.FC<{title: string, children: React.ReactNode}> = (
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   showAnchors, setShowAnchors, showHandles, setShowHandles,
   showOutlines, setShowOutlines, showGridlines, setShowGridlines,
-  onGenerateAll, onGenerateFigmaLayers, hasSVG,
-  customization, setCustomization, openPanel, setOpenPanel
+  onGenerateAll, hasSVG, customization, setCustomization, 
+  openPanel, setOpenPanel, onFileUpload
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        onFileUpload(file);
+    }
+    // Reset the input value to allow uploading the same file again
+    if(event.target) {
+        event.target.value = '';
+    }
+  };
 
   const handleCustomizationChange = (section: keyof CustomizationOptions, key: string, value: any) => {
     setCustomization({
@@ -105,6 +121,24 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
         <LogoIcon className="w-6 h-6"/>
         <h1 className="text-lg font-semibold">Logo Grid Generator</h1>
+      </div>
+
+      <div className="pb-4 border-b border-gray-200">
+        <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/svg+xml"
+            className="hidden"
+            aria-label="Upload SVG file"
+        />
+        <button
+            onClick={handleUploadClick}
+            className="w-full flex items-center justify-center gap-2 bg-black text-white hover:bg-gray-800 font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
+        >
+            <UploadIcon className="w-5 h-5" />
+            <span>Upload SVG</span>
+        </button>
       </div>
       
       <div className="grid grid-cols-2 gap-2">
@@ -202,13 +236,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           className="w-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
         >
           <span>Toggle All Previews</span>
-        </button>
-        <button
-          onClick={onGenerateFigmaLayers}
-          disabled={!hasSVG}
-          className="w-full bg-black text-white hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-        >
-          <span>Create Figma Layers</span>
         </button>
       </div>
     </aside>
