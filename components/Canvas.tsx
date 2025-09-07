@@ -1,4 +1,4 @@
-import React, { useState, MouseEvent } from 'react';
+import React, { useState, MouseEvent, useMemo } from 'react';
 import type { ParsedSVG, Point, Handle, CustomizationOptions } from '../types';
 
 interface CanvasProps {
@@ -11,19 +11,31 @@ interface CanvasProps {
   error: string | null;
   customization: CustomizationOptions;
   onHandleMove: (pathIndex: number, handleIndex: number, newPosition: Point) => void;
+  onPathMove: (pathIndex: number, delta: Point) => void;
+  snapToGrid: boolean;
+  selectedPathIndex: number | null;
+  setSelectedPathIndex: (index: number | null) => void;
 }
 
-const Gridlines: React.FC<{ width: number, height: number, options: CustomizationOptions['gridlines'] }> = ({ width, height, options }) => {
+const Grid: React.FC<{ width: number, height: number, options: CustomizationOptions['gridlines'] }> = ({ width, height, options }) => {
     const step = Math.min(width, height) / 20;
-    const lines = [];
+    const items = [];
 
-    for (let i = 0; i <= width; i += step) {
-        lines.push(<line key={`v-${i}`} x1={i} y1={0} x2={i} y2={height} stroke={options.color} strokeWidth={options.width} />);
+    if (options.style === 'lines') {
+        for (let i = 0; i <= width; i += step) {
+            items.push(<line key={`v-${i}`} x1={i} y1={0} x2={i} y2={height} stroke={options.color} strokeWidth={options.width} />);
+        }
+        for (let i = 0; i <= height; i += step) {
+            items.push(<line key={`h-${i}`} x1={0} y1={i} x2={width} y2={i} stroke={options.color} strokeWidth={options.width} />);
+        }
+    } else { // Dots
+        for (let i = 0; i <= width; i += step) {
+            for (let j = 0; j <= height; j += step) {
+                items.push(<circle key={`d-${i}-${j}`} cx={i} cy={j} r={options.width} fill={options.color} />);
+            }
+        }
     }
-    for (let i = 0; i <= height; i += step) {
-        lines.push(<line key={`h-${i}`} x1={0} y1={i} x2={width} y2={i} stroke={options.color} strokeWidth={options.width} />);
-    }
-    return <g>{lines}</g>;
+    return <g>{items}</g>;
 };
 
 const Anchors: React.FC<{ points: Point[], options: CustomizationOptions['anchors'] }> = ({ points, options }) => (
@@ -81,7 +93,7 @@ const Handles: React.FC<{
     </g>
 );
 
-const Outlines: React.FC<{ path: { boundingBox: SVGRect | null }, options: CustomizationOptions['outlines'] }> = ({ path, options }) => {
+const Outlines: React.FC<{ path: { boundingBox: SVGRect | null }, options: CustomizationOptions['outlines'], isSelected: boolean }> = ({ path, options, isSelected }) => {
     if (!path.boundingBox) return null;
     const { x, y, width, height } = path.boundingBox;
     return (
@@ -91,16 +103,24 @@ const Outlines: React.FC<{ path: { boundingBox: SVGRect | null }, options: Custo
             width={width}
             height={height}
             fill="none"
-            stroke={options.color}
-            strokeWidth={options.width}
+            stroke={isSelected ? '#007AFF' : options.color}
+            strokeWidth={isSelected ? options.width * 1.5 : options.width}
             strokeDasharray={options.style === 'dashed' ? '4 2' : 'none'}
         />
     );
 };
 
 
-export const Canvas: React.FC<CanvasProps> = ({ svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, error, customization, onHandleMove }) => {
-  const [draggedHandle, setDraggedHandle] = useState<{ pathIndex: number; handleIndex: number } | null>(null);
+export const Canvas: React.FC<CanvasProps> = ({ 
+  svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, error, customization, 
+  onHandleMove, onPathMove, snapToGrid, selectedPathIndex, setSelectedPathIndex 
+}) => {
+  const [dragState, setDragState] = useState<{ type: 'handle' | 'path', index: number, pathIndex: number, startPoint: Point } | null>(null);
+
+  const gridStep = useMemo(() => {
+    if (!svgData) return 1;
+    return Math.min(svgData.width, svgData.height) / 20;
+  }, [svgData]);
 
   const getSVGPoint = (e: MouseEvent): Point => {
     if (!svgRef.current) return { x: 0, y: 0 };
@@ -112,19 +132,54 @@ export const Canvas: React.FC<CanvasProps> = ({ svgData, svgRef, showAnchors, sh
     return { x: transformedPt.x, y: transformedPt.y };
   };
 
-  const handleMouseDown = (e: MouseEvent, pathIndex: number, handleIndex: number) => {
+  const snap = (coord: number) => {
+    return Math.round(coord / gridStep) * gridStep;
+  };
+
+  const handleMouseDown = (e: MouseEvent, type: 'handle' | 'path', pathIndex: number, index: number) => {
     e.stopPropagation();
-    setDraggedHandle({ pathIndex, handleIndex });
+    setSelectedPathIndex(pathIndex);
+    setDragState({ type, index, pathIndex, startPoint: getSVGPoint(e) });
   };
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (!draggedHandle) return;
-    const newPos = getSVGPoint(e);
-    onHandleMove(draggedHandle.pathIndex, draggedHandle.handleIndex, newPos);
+    if (!dragState) return;
+
+    const currentPoint = getSVGPoint(e);
+    let newPos = { ...currentPoint };
+
+    if (dragState.type === 'handle') {
+      if (snapToGrid) {
+        newPos = { x: snap(currentPoint.x), y: snap(currentPoint.y) };
+      }
+      onHandleMove(dragState.pathIndex, dragState.index, newPos);
+    } 
+    
+    if (dragState.type === 'path') {
+      const delta = {
+        x: currentPoint.x - dragState.startPoint.x,
+        y: currentPoint.y - dragState.startPoint.y
+      };
+
+      // Apply snapping to the delta
+      if (snapToGrid) {
+        const snappedStart = { x: snap(dragState.startPoint.x), y: snap(dragState.startPoint.y) };
+        const snappedCurrent = { x: snap(currentPoint.x), y: snap(currentPoint.y) };
+        delta.x = snappedCurrent.x - snappedStart.x;
+        delta.y = snappedCurrent.y - snappedStart.y;
+        if(Math.abs(delta.x) > 0 || Math.abs(delta.y) > 0) {
+            onPathMove(dragState.pathIndex, delta);
+            setDragState({ ...dragState, startPoint: currentPoint }); // Update start point to prevent cumulative snapping errors
+        }
+      } else {
+        onPathMove(dragState.pathIndex, delta);
+        setDragState({ ...dragState, startPoint: currentPoint });
+      }
+    }
   };
 
   const handleMouseUp = () => {
-    setDraggedHandle(null);
+    setDragState(null);
   };
 
   if (error) {
@@ -162,16 +217,24 @@ export const Canvas: React.FC<CanvasProps> = ({ svgData, svgRef, showAnchors, sh
         className="max-w-full max-h-full"
         preserveAspectRatio="xMidYMid meet"
       >
-        {showGridlines && <Gridlines width={svgData.width} height={svgData.height} options={customization.gridlines} />}
+        {showGridlines && <Grid width={svgData.width} height={svgData.height} options={customization.gridlines} />}
 
         {svgData.paths.map((path, i) => {
+            const isSelected = i === selectedPathIndex;
             const fillColor = customization.showFill ? customization.fillColor : 'none';
             return (
                 <g key={i}>
-                    <path d={path.d} fill={fillColor} stroke={customization.path.stroke} strokeWidth={customization.path.strokeWidth} />
-                    {showOutlines && <Outlines path={path} options={customization.outlines} />}
+                    <path 
+                      d={path.d} 
+                      fill={fillColor} 
+                      stroke={isSelected ? '#007AFF' : customization.path.stroke} 
+                      strokeWidth={isSelected ? customization.path.strokeWidth * 1.5 : customization.path.strokeWidth}
+                      onMouseDown={(e) => handleMouseDown(e, 'path', i, i)}
+                      style={{ cursor: 'move' }}
+                    />
+                    {showOutlines && <Outlines path={path} options={customization.outlines} isSelected={isSelected} />}
                     {showAnchors && <Anchors points={path.points} options={customization.anchors} />}
-                    {showHandles && path.handles.length > 0 && <Handles pathIndex={i} handles={path.handles} options={customization.handles} anchorOptions={customization.anchors} onMouseDown={handleMouseDown} />}
+                    {showHandles && path.handles.length > 0 && <Handles pathIndex={i} handles={path.handles} options={customization.handles} anchorOptions={customization.anchors} onMouseDown={(e, pIdx, hIdx) => handleMouseDown(e, 'handle', pIdx, hIdx)} />}
                 </g>
             )
         })}

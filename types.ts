@@ -55,6 +55,7 @@ export interface CustomizationOptions {
   gridlines: {
     color: string;
     width: number;
+    style: 'lines' | 'dots';
   };
   canvasBackground: string;
 }

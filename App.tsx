@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ControlPanel } from './components/ControlPanel';
 import { Canvas } from './components/Canvas';
-import type { ParsedSVG, CustomizationOptions, Point } from './types';
+import type { ParsedSVG, CustomizationOptions, Point, PathSegment } from './types';
 import { parseSVG, segmentsToD, parsePathD } from './services/svgParser';
 
 const initialCustomization: CustomizationOptions = {
@@ -11,7 +11,7 @@ const initialCustomization: CustomizationOptions = {
   anchors: { color: '#000000', size: 8, shape: 'square' },
   handles: { color: '#888888', width: 1 },
   outlines: { color: '#000000', width: 1, style: 'dashed' },
-  gridlines: { color: '#cccccc', width: 0.5 },
+  gridlines: { color: '#cccccc', width: 0.5, style: 'lines' },
   canvasBackground: '#f9fafb',
 };
 
@@ -24,6 +24,9 @@ export default function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [openPanel, setOpenPanel] = useState<string | null>(null);
   const [customization, setCustomization] = useState<CustomizationOptions>(initialCustomization);
+  const [snapToGrid, setSnapToGrid] = useState<boolean>(false);
+  const [selectedPathIndex, setSelectedPathIndex] = useState<number | null>(null);
+  const [exportDimensions, setExportDimensions] = useState({ width: 0, height: 0 });
 
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -39,6 +42,8 @@ export default function App(): JSX.Element {
                     setSvgData(null);
                 } else {
                     setSvgData(parsedData);
+                    setExportDimensions({ width: parsedData.width, height: parsedData.height });
+                    setSelectedPathIndex(null);
                     setError(null);
                 }
             } catch (err) {
@@ -123,6 +128,48 @@ export default function App(): JSX.Element {
       };
     });
   }, []);
+  
+  const handlePathMove = useCallback((pathIndex: number, delta: Point) => {
+    setSvgData(currentSvgData => {
+      if (!currentSvgData) return null;
+
+      const newPaths = [...currentSvgData.paths];
+      const path = newPaths[pathIndex];
+
+      const translatedSegments = path.segments.map((seg: PathSegment) => {
+        const newValues = [...seg.values];
+        // The parser converts all commands to absolute values with x,y pairs
+        for (let i = 0; i < newValues.length; i += 2) {
+          newValues[i] += delta.x;
+          newValues[i+1] += delta.y;
+        }
+        return { ...seg, values: newValues };
+      });
+
+      const newD = segmentsToD(translatedSegments);
+      const newPoints = path.points.map(p => ({ x: p.x + delta.x, y: p.y + delta.y }));
+      const newHandles = path.handles.map(h => ({
+        ...h,
+        start: { x: h.start.x + delta.x, y: h.start.y + delta.y },
+        end: { x: h.end.x + delta.x, y: h.end.y + delta.y },
+      }));
+      const newBbox = path.boundingBox ? { ...path.boundingBox, x: path.boundingBox.x + delta.x, y: path.boundingBox.y + delta.y } : null;
+
+      newPaths[pathIndex] = {
+        ...path,
+        d: newD,
+        segments: translatedSegments,
+        points: newPoints,
+        handles: newHandles,
+        boundingBox: newBbox,
+      };
+
+      return {
+        ...currentSvgData,
+        paths: newPaths,
+      };
+    });
+  }, []);
 
   const triggerDownload = (href: string, filename: string) => {
     const link = document.createElement('a');
@@ -140,6 +187,8 @@ export default function App(): JSX.Element {
     }
     const svgElement = svgRef.current.cloneNode(true) as SVGSVGElement;
     svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svgElement.setAttribute('width', String(exportDimensions.width));
+    svgElement.setAttribute('height', String(exportDimensions.height));
     
     if(customization.canvasBackground) {
         const backgroundRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -154,7 +203,7 @@ export default function App(): JSX.Element {
     const url = URL.createObjectURL(blob);
     triggerDownload(url, 'logo-grid.svg');
     URL.revokeObjectURL(url);
-  }, [svgRef, customization.canvasBackground]);
+  }, [svgRef, customization.canvasBackground, exportDimensions]);
 
   const handleExportPNG = useCallback(() => {
     if (!svgRef.current || !svgData) {
@@ -164,8 +213,7 @@ export default function App(): JSX.Element {
 
     const scale = 3; // For high-resolution
     const canvas = document.createElement('canvas');
-    const width = svgData.width;
-    const height = svgData.height;
+    const { width, height } = exportDimensions;
     
     canvas.width = width * scale;
     canvas.height = height * scale;
@@ -203,7 +251,7 @@ export default function App(): JSX.Element {
     };
     img.src = url;
 
-  }, [svgRef, svgData, customization.canvasBackground]);
+  }, [svgRef, svgData, customization.canvasBackground, exportDimensions]);
 
 
   return (
@@ -219,6 +267,7 @@ export default function App(): JSX.Element {
         setShowGridlines={setShowGridlines}
         onGenerateAll={generateAll}
         hasSVG={!!svgData}
+        svgData={svgData}
         customization={customization}
         setCustomization={setCustomization}
         openPanel={openPanel}
@@ -226,8 +275,12 @@ export default function App(): JSX.Element {
         onFileUpload={handleFileUpload}
         onExportSVG={handleExportSVG}
         onExportPNG={handleExportPNG}
+        snapToGrid={snapToGrid}
+        setSnapToGrid={setSnapToGrid}
+        exportDimensions={exportDimensions}
+        setExportDimensions={setExportDimensions}
       />
-      <main className="flex-1 flex items-center justify-center p-4 bg-gray-100 transition-colors duration-300">
+      <main className="flex-1 flex items-center justify-center p-4 bg-gray-100 transition-colors duration-300" onClick={() => setSelectedPathIndex(null)}>
         <Canvas 
           svgData={svgData} 
           svgRef={svgRef}
@@ -238,6 +291,10 @@ export default function App(): JSX.Element {
           error={error}
           customization={customization}
           onHandleMove={handleHandleMove}
+          onPathMove={handlePathMove}
+          snapToGrid={snapToGrid}
+          selectedPathIndex={selectedPathIndex}
+          setSelectedPathIndex={setSelectedPathIndex}
         />
       </main>
     </div>

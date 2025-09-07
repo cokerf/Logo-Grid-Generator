@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
-import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, LogoIcon, UploadIcon, ExportIcon } from './icons';
-import type { CustomizationOptions } from '../types';
+import React, { useRef, useState, useEffect } from 'react';
+import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, LogoIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon } from './icons';
+import type { CustomizationOptions, ParsedSVG } from '../types';
 
 interface ControlPanelProps {
   showAnchors: boolean;
@@ -13,6 +13,7 @@ interface ControlPanelProps {
   setShowGridlines: (value: boolean) => void;
   onGenerateAll: () => void;
   hasSVG: boolean;
+  svgData: ParsedSVG | null;
   customization: CustomizationOptions;
   setCustomization: (options: CustomizationOptions) => void;
   openPanel: string | null;
@@ -20,6 +21,10 @@ interface ControlPanelProps {
   onFileUpload: (file: File) => void;
   onExportSVG: () => void;
   onExportPNG: () => void;
+  snapToGrid: boolean;
+  setSnapToGrid: (value: boolean) => void;
+  exportDimensions: { width: number; height: number; };
+  setExportDimensions: (dims: { width: number; height: number; }) => void;
 }
 
 const ToggleButton: React.FC<{
@@ -83,11 +88,13 @@ const CustomizeSection: React.FC<{title: string, children: React.ReactNode}> = (
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   showAnchors, setShowAnchors, showHandles, setShowHandles,
   showOutlines, setShowOutlines, showGridlines, setShowGridlines,
-  onGenerateAll, hasSVG, customization, setCustomization, 
-  openPanel, setOpenPanel, onFileUpload, onExportSVG, onExportPNG
+  onGenerateAll, hasSVG, svgData, customization, setCustomization, 
+  openPanel, setOpenPanel, onFileUpload, onExportSVG, onExportPNG,
+  snapToGrid, setSnapToGrid, exportDimensions, setExportDimensions,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [isAspectRatioLocked, setAspectRatioLocked] = useState(true);
+  
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -97,7 +104,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     if (file) {
         onFileUpload(file);
     }
-    // Reset the input value to allow uploading the same file again
     if(event.target) {
         event.target.value = '';
     }
@@ -118,8 +124,22 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     setCustomization({ ...customization, [key]: value });
   };
 
+  const handleDimensionChange = (axis: 'width' | 'height', value: number) => {
+    const numValue = Math.max(0, value);
+    if (isAspectRatioLocked && svgData && svgData.width > 0 && svgData.height > 0) {
+      const aspectRatio = svgData.width / svgData.height;
+      if (axis === 'width') {
+        setExportDimensions({ width: numValue, height: Math.round(numValue / aspectRatio) });
+      } else {
+        setExportDimensions({ width: Math.round(numValue * aspectRatio), height: numValue });
+      }
+    } else {
+      setExportDimensions({ ...exportDimensions, [axis]: numValue });
+    }
+  };
+
   return (
-    <aside className="w-80 bg-white p-4 flex flex-col gap-4">
+    <aside className="w-80 bg-white p-4 flex flex-col gap-4 overflow-y-auto">
       <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
         <LogoIcon className="w-6 h-6"/>
         <h1 className="text-lg font-semibold">Logo Grid Generator</h1>
@@ -180,7 +200,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <input type="range" min="2" max="20" step="1" value={customization.anchors.size} onChange={e => handleCustomizationChange('anchors', 'size', parseInt(e.target.value))} />
             </SettingRow>
             <SettingRow label="Shape">
-                <select value={customization.anchors.shape} onChange={e => handleCustomizationChange('anchors', 'shape', e.target.value)} className="bg-gray-200 rounded p-1">
+                <select value={customization.anchors.shape} onChange={e => handleCustomizationChange('anchors', 'shape', e.target.value)} className="bg-gray-200 rounded p-1 text-xs">
                     <option value="square">Square</option>
                     <option value="circle">Circle</option>
                 </select>
@@ -202,7 +222,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <input type="range" min="0.1" max="5" step="0.1" value={customization.outlines.width} onChange={e => handleCustomizationChange('outlines', 'width', parseFloat(e.target.value))} />
             </SettingRow>
             <SettingRow label="Style">
-                <select value={customization.outlines.style} onChange={e => handleCustomizationChange('outlines', 'style', e.target.value)} className="bg-gray-200 rounded p-1">
+                <select value={customization.outlines.style} onChange={e => handleCustomizationChange('outlines', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs">
                     <option value="solid">Solid</option>
                     <option value="dashed">Dashed</option>
                 </select>
@@ -214,6 +234,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </SettingRow>
              <SettingRow label="Width">
                 <input type="range" min="0.1" max="3" step="0.1" value={customization.gridlines.width} onChange={e => handleCustomizationChange('gridlines', 'width', parseFloat(e.target.value))} />
+            </SettingRow>
+            <SettingRow label="Style">
+                <select value={customization.gridlines.style} onChange={e => handleCustomizationChange('gridlines', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs">
+                    <option value="lines">Lines</option>
+                    <option value="dots">Dots</option>
+                </select>
             </SettingRow>
         </CustomizeSection>
       </CollapsiblePanel>
@@ -229,6 +255,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                  <input type="color" value={customization.canvasBackground} onChange={e => handleSimpleCustomizationChange('canvasBackground', e.target.value)} className="w-8 h-8"/>
             </SettingRow>
         </CustomizeSection>
+        <CustomizeSection title="Editing">
+            <SettingRow label="Snap to Grid">
+                 <input type="checkbox" checked={snapToGrid} onChange={e => setSnapToGrid(e.target.checked)} className="toggle-checkbox" />
+            </SettingRow>
+        </CustomizeSection>
       </CollapsiblePanel>
 
       <CollapsiblePanel
@@ -237,7 +268,37 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         isOpen={openPanel === 'export'}
         onClick={() => setOpenPanel(openPanel === 'export' ? null : 'export')}
       >
-        <div className="flex flex-col gap-3">
+        <div className="space-y-3">
+            <div className="flex gap-2 items-center">
+              <div className="flex-1">
+                <label className="text-xs text-gray-500">Width</label>
+                <input 
+                  type="number"
+                  value={Math.round(exportDimensions.width)}
+                  onChange={e => handleDimensionChange('width', parseInt(e.target.value, 10) || 0)}
+                  className="w-full bg-gray-200 p-2 rounded text-sm"
+                  disabled={!hasSVG}
+                />
+              </div>
+              <button 
+                onClick={() => setAspectRatioLocked(!isAspectRatioLocked)}
+                className="mt-5 p-2 rounded hover:bg-gray-200"
+                aria-label="Toggle aspect ratio lock"
+                disabled={!hasSVG}
+              >
+                {isAspectRatioLocked ? <LockIcon className="w-5 h-5"/> : <UnlockIcon className="w-5 h-5"/>}
+              </button>
+              <div className="flex-1">
+                <label className="text-xs text-gray-500">Height</label>
+                <input 
+                  type="number"
+                  value={Math.round(exportDimensions.height)}
+                  onChange={e => handleDimensionChange('height', parseInt(e.target.value, 10) || 0)}
+                  className="w-full bg-gray-200 p-2 rounded text-sm"
+                  disabled={!hasSVG}
+                />
+              </div>
+            </div>
             <button
               onClick={onExportSVG}
               disabled={!hasSVG}
