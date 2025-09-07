@@ -3,15 +3,23 @@ export interface Point {
   y: number;
 }
 
+export interface PathSegment {
+    command: string;
+    values: number[];
+}
+
 export interface Handle {
   start: Point;
   end: Point;
+  segmentIndex: number;
+  valueIndex: number; // index of the x-coordinate of the handle point in the segment's values array
 }
 
 export interface SVGPathData {
   d: string;
   points: Point[];
   handles: Handle[];
+  segments: PathSegment[];
   boundingBox: SVGRect | null;
 }
 
@@ -22,8 +30,6 @@ export interface ParsedSVG {
   height: number;
   paths: SVGPathData[];
 }
-
-export type Theme = 'light' | 'dark';
 
 export interface CustomizationOptions {
   showFill: boolean;
@@ -48,4 +54,5 @@ export interface CustomizationOptions {
     color: string;
     width: number;
   };
+  canvasBackground: string;
 }

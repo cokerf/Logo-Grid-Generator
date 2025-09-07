@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ControlPanel } from './components/ControlPanel';
 import { Canvas } from './components/Canvas';
-import type { ParsedSVG, Theme, CustomizationOptions } from './types';
-import { parseSVG } from './services/svgParser';
+import type { ParsedSVG, CustomizationOptions, Point } from './types';
+import { parseSVG, segmentsToD } from './services/svgParser';
 
 const initialCustomization: CustomizationOptions = {
   showFill: true,
@@ -11,17 +11,8 @@ const initialCustomization: CustomizationOptions = {
   handles: { color: '#888888', width: 1 },
   outlines: { color: '#000000', width: 1, style: 'dashed' },
   gridlines: { color: '#cccccc', width: 0.5 },
+  canvasBackground: '#f9fafb',
 };
-
-const initialDarkCustomization: CustomizationOptions = {
-  showFill: true,
-  path: { stroke: '#888888', strokeWidth: 1 },
-  anchors: { color: '#FFFFFF', size: 8 },
-  handles: { color: '#888888', width: 1 },
-  outlines: { color: '#FFFFFF', width: 1, style: 'dashed' },
-  gridlines: { color: '#444444', width: 0.5 },
-};
-
 
 export default function App(): JSX.Element {
   const [svgData, setSvgData] = useState<ParsedSVG | null>(null);
@@ -30,22 +21,11 @@ export default function App(): JSX.Element {
   const [showOutlines, setShowOutlines] = useState<boolean>(false);
   const [showGridlines, setShowGridlines] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [theme, setTheme] = useState<Theme>('dark');
   const [openPanel, setOpenPanel] = useState<string | null>(null);
-  const [customization, setCustomization] = useState<CustomizationOptions>(initialDarkCustomization);
+  const [customization, setCustomization] = useState<CustomizationOptions>(initialCustomization);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      setCustomization(initialDarkCustomization);
-    } else {
-      document.documentElement.classList.remove('dark');
-      setCustomization(initialCustomization);
-    }
-  }, [theme]);
   
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -103,7 +83,7 @@ export default function App(): JSX.Element {
     // Apply background for PNG
     if(format === 'png') {
       const style = document.createElement('style');
-      style.textContent = `svg { background-color: ${theme === 'dark' ? '#111827' : '#f9fafb'}; }`;
+      style.textContent = `svg { background-color: ${customization.canvasBackground}; }`;
       svgClone.prepend(style);
     }
 
@@ -142,7 +122,7 @@ export default function App(): JSX.Element {
       };
       img.src = url;
     }
-  }, [svgData, theme]);
+  }, [svgData, customization.canvasBackground]);
 
   // Effect to add bounding boxes after parsing
   useEffect(() => {
@@ -168,9 +148,43 @@ export default function App(): JSX.Element {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [svgData?.rawSVG]);
 
+ const handleHandleMove = useCallback((pathIndex: number, handleIndex: number, newPosition: Point) => {
+    setSvgData(currentSvgData => {
+        if (!currentSvgData) return null;
+
+        const newPaths = [...currentSvgData.paths];
+        const path = newPaths[pathIndex];
+        const handle = path.handles[handleIndex];
+
+        // Deep clone the segments to avoid direct mutation
+        const newSegments = JSON.parse(JSON.stringify(path.segments));
+        
+        const segmentToUpdate = newSegments[handle.segmentIndex];
+        segmentToUpdate.values[handle.valueIndex] = newPosition.x;
+        segmentToUpdate.values[handle.valueIndex + 1] = newPosition.y;
+
+        const newD = segmentsToD(newSegments);
+        
+        // Re-parse just the handles for the updated path to reflect the change
+        const { handles: newHandles } = parseSVG(`<svg><path d="${newD}"></path></svg>`).paths[0];
+
+        newPaths[pathIndex] = {
+            ...path,
+            d: newD,
+            segments: newSegments,
+            handles: newHandles,
+        };
+
+        return {
+            ...currentSvgData,
+            paths: newPaths,
+        };
+    });
+}, []);
+
 
   return (
-    <div className="flex h-screen w-screen font-sans text-black dark:text-white bg-white dark:bg-black transition-colors duration-300">
+    <div className="flex h-screen w-screen font-sans text-black bg-white transition-colors duration-300">
       <input
         type="file"
         ref={fileInputRef}
@@ -190,15 +204,13 @@ export default function App(): JSX.Element {
         onGenerateAll={generateAll}
         onUploadClick={handleUploadClick}
         hasSVG={!!svgData}
-        theme={theme}
-        setTheme={setTheme}
         customization={customization}
         setCustomization={setCustomization}
         openPanel={openPanel}
         setOpenPanel={setOpenPanel}
         onDownload={handleDownload}
       />
-      <main className="flex-1 flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+      <main className="flex-1 flex items-center justify-center p-4 bg-gray-100 transition-colors duration-300">
         <Canvas 
           svgData={svgData} 
           svgRef={svgRef}
@@ -209,7 +221,7 @@ export default function App(): JSX.Element {
           onUploadClick={handleUploadClick}
           error={error}
           customization={customization}
-          theme={theme}
+          onHandleMove={handleHandleMove}
         />
       </main>
     </div>

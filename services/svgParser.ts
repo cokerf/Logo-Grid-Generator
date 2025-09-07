@@ -1,5 +1,8 @@
+import type { Point, Handle, SVGPathData, ParsedSVG, PathSegment } from '../types';
 
-import type { Point, Handle, SVGPathData, ParsedSVG } from '../types';
+export const segmentsToD = (segments: PathSegment[]): string => {
+    return segments.map(seg => seg.command + seg.values.join(' ')).join('');
+}
 
 export const parseSVG = (svgContent: string): ParsedSVG => {
   const parser = new DOMParser();
@@ -36,11 +39,12 @@ export const parseSVG = (svgContent: string): ParsedSVG => {
 
   const paths: SVGPathData[] = pathElements.map(pathEl => {
     const d = pathEl.getAttribute('d') || '';
-    const { points, handles } = parsePathD(d);
+    const { points, handles, segments } = parsePathD(d);
     return {
       d,
       points,
       handles,
+      segments,
       boundingBox: null, // BBox will be calculated later in a useEffect
     };
   });
@@ -55,133 +59,152 @@ export const parseSVG = (svgContent: string): ParsedSVG => {
 };
 
 
-const parsePathD = (d: string): { points: Point[], handles: Handle[] } => {
+const parsePathD = (d: string): { points: Point[], handles: Handle[], segments: PathSegment[] } => {
   const points: Point[] = [];
   const handles: Handle[] = [];
+  const segments: PathSegment[] = [];
+
   let currentPoint: Point = { x: 0, y: 0 };
-  let startPoint: Point = { x: 0, y: 0 };
+  let subpathStart: Point = { x: 0, y: 0 };
+  let lastControl: Point | null = null;
 
   const commands = d.match(/[a-zA-Z][^a-zA-Z]*/g) || [];
 
   for (const commandStr of commands) {
-    const command = commandStr[0];
+    const rawCommand = commandStr[0];
+    const isRelative = rawCommand === rawCommand.toLowerCase();
+    const command = rawCommand.toUpperCase();
+    
     const args = commandStr.slice(1).trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
-    
-    const isRelative = command === command.toLowerCase();
+    const newSegment: PathSegment = { command: command, values: [] };
 
-    const processPoints = (numCoords: number, isMove: boolean = false) => {
-        for (let i = 0; i < args.length; i += numCoords) {
-            const pointArgs = args.slice(i, i + numCoords);
-            if(pointArgs.length < numCoords) continue;
+    switch (command) {
+      case 'M': {
+        const [x, y] = [args[0], args[1]];
+        currentPoint.x = isRelative ? currentPoint.x + x : x;
+        currentPoint.y = isRelative ? currentPoint.y + y : y;
+        subpathStart = { ...currentPoint };
+        points.push({ ...currentPoint });
+        newSegment.values.push(currentPoint.x, currentPoint.y);
+        lastControl = null;
 
-            const targetPoint: Point = {
-                x: pointArgs[numCoords-2],
-                y: pointArgs[numCoords-1]
-            };
-            
-            if (isRelative) {
-                targetPoint.x += currentPoint.x;
-                targetPoint.y += currentPoint.y;
+        // Handle implicit Lineto commands
+        if(args.length > 2) {
+            segments.push(newSegment);
+            for(let i=2; i<args.length; i+=2) {
+                const lSegment: PathSegment = { command: 'L', values: [] };
+                currentPoint.x = isRelative ? currentPoint.x + args[i] : args[i];
+                currentPoint.y = isRelative ? currentPoint.y + args[i+1] : args[i+1];
+                points.push({...currentPoint});
+                lSegment.values.push(currentPoint.x, currentPoint.y);
+                segments.push(lSegment);
             }
-
-            if(isMove) {
-                 currentPoint = targetPoint;
-                 startPoint = currentPoint;
-                 points.push(currentPoint);
-                 continue;
-            }
-            
-            switch (command.toUpperCase()) {
-                case 'L':
-                case 'H':
-                case 'V':
-                     points.push(targetPoint);
-                     break;
-
-                case 'C': {
-                    const h1: Point = { x: pointArgs[0], y: pointArgs[1] };
-                    const h2: Point = { x: pointArgs[2], y: pointArgs[3] };
-
-                    if(isRelative) {
-                        h1.x += currentPoint.x; h1.y += currentPoint.y;
-                        h2.x += currentPoint.x; h2.y += currentPoint.y;
-                    }
-
-                    points.push(targetPoint);
-                    handles.push({ start: currentPoint, end: h1 });
-                    handles.push({ start: targetPoint, end: h2 });
-                    break;
-                }
-                case 'S': {
-                    const lastCmd = commands[i-1]?.[0].toUpperCase();
-                    const prevHandle = (lastCmd === 'C' || lastCmd === 'S') ? handles[handles.length - 1].end : currentPoint;
-                    const h1 = { x: 2 * currentPoint.x - prevHandle.x, y: 2 * currentPoint.y - prevHandle.y };
-                    const h2 = { x: pointArgs[0], y: pointArgs[1] };
-
-                     if(isRelative) {
-                        h2.x += currentPoint.x; h2.y += currentPoint.y;
-                    }
-
-                    points.push(targetPoint);
-                    handles.push({ start: currentPoint, end: h1 });
-                    handles.push({ start: targetPoint, end: h2 });
-                    break;
-                }
-                 case 'Q': {
-                    const h1: Point = { x: pointArgs[0], y: pointArgs[1] };
-                    if(isRelative) {
-                        h1.x += currentPoint.x; h1.y += currentPoint.y;
-                    }
-                    points.push(targetPoint);
-                    handles.push({ start: currentPoint, end: h1 });
-                    handles.push({ start: targetPoint, end: h1 }); // Quadratic handles are the same point
-                    break;
-                }
-            }
-            currentPoint = targetPoint;
+            continue; // Skip pushing segment at the end
         }
-    }
-    
-    switch (command.toUpperCase()) {
-      case 'M':
-        processPoints(2, true);
         break;
-      case 'L':
-      case 'T':
-        processPoints(2);
+      }
+      case 'L': {
+        const [x, y] = [args[0], args[1]];
+        currentPoint.x = isRelative ? currentPoint.x + x : x;
+        currentPoint.y = isRelative ? currentPoint.y + y : y;
+        points.push({ ...currentPoint });
+        newSegment.values.push(currentPoint.x, currentPoint.y);
+        lastControl = null;
         break;
+      }
       case 'H': {
-          let lastX = currentPoint.x;
-          for (const arg of args) {
-              const target = {x: isRelative ? lastX + arg : arg, y: currentPoint.y};
-              points.push(target);
-              lastX = target.x;
-          }
-          currentPoint.x = lastX;
+        const x = args[0];
+        currentPoint.x = isRelative ? currentPoint.x + x : x;
+        points.push({ ...currentPoint });
+        newSegment.command = 'L'; // Convert H to L for easier processing
+        newSegment.values.push(currentPoint.x, currentPoint.y);
+        lastControl = null;
         break;
       }
-      case 'V':{
-          let lastY = currentPoint.y;
-          for (const arg of args) {
-              const target = {x: currentPoint.x, y: isRelative ? lastY + arg : arg};
-              points.push(target);
-              lastY = target.y;
-          }
-          currentPoint.y = lastY;
+      case 'V': {
+        const y = args[0];
+        currentPoint.y = isRelative ? currentPoint.y + y : y;
+        points.push({ ...currentPoint });
+        newSegment.command = 'L'; // Convert V to L for easier processing
+        newSegment.values.push(currentPoint.x, currentPoint.y);
+        lastControl = null;
         break;
       }
-      case 'C':
-        processPoints(6);
+      case 'C': {
+        const [x1, y1, x2, y2, x, y] = args;
+        const p1 = { x: isRelative ? currentPoint.x + x1 : x1, y: isRelative ? currentPoint.y + y1 : y1 };
+        const p2 = { x: isRelative ? currentPoint.x + x2 : x2, y: isRelative ? currentPoint.y + y2 : y2 };
+        const pEnd = { x: isRelative ? currentPoint.x + x : x, y: isRelative ? currentPoint.y + y : y };
+        
+        handles.push({ start: currentPoint, end: p1, segmentIndex: segments.length, valueIndex: 0 });
+        handles.push({ start: pEnd, end: p2, segmentIndex: segments.length, valueIndex: 2 });
+        
+        currentPoint = pEnd;
+        points.push({ ...currentPoint });
+        newSegment.values.push(p1.x, p1.y, p2.x, p2.y, pEnd.x, pEnd.y);
+        lastControl = p2;
         break;
-      case 'S':
-      case 'Q':
-        processPoints(4);
+      }
+       case 'S': {
+        const [x2, y2, x, y] = args;
+        const p1 = lastControl ? { x: 2 * currentPoint.x - lastControl.x, y: 2 * currentPoint.y - lastControl.y } : { ...currentPoint };
+        const p2 = { x: isRelative ? currentPoint.x + x2 : x2, y: isRelative ? currentPoint.y + y2 : y2 };
+        const pEnd = { x: isRelative ? currentPoint.x + x : x, y: isRelative ? currentPoint.y + y : y };
+
+        newSegment.command = 'C'; // Convert S to C
+        
+        handles.push({ start: currentPoint, end: p1, segmentIndex: segments.length, valueIndex: 0 });
+        handles.push({ start: pEnd, end: p2, segmentIndex: segments.length, valueIndex: 2 });
+
+        currentPoint = pEnd;
+        points.push({ ...currentPoint });
+        newSegment.values.push(p1.x, p1.y, p2.x, p2.y, pEnd.x, pEnd.y);
+        lastControl = p2;
         break;
+      }
+      case 'Q': {
+        const [x1, y1, x, y] = args;
+        const p1 = { x: isRelative ? currentPoint.x + x1 : x1, y: isRelative ? currentPoint.y + y1 : y1 };
+        const pEnd = { x: isRelative ? currentPoint.x + x : x, y: isRelative ? currentPoint.y + y : y };
+        
+        handles.push({ start: currentPoint, end: p1, segmentIndex: segments.length, valueIndex: 0 });
+        // For quadratic, both handles point to the same control point.
+        // We link the draggable visual to the first control point.
+        // A full conversion to cubic might be better, but this works for visualization and interaction.
+        handles.push({ start: pEnd, end: p1, segmentIndex: segments.length, valueIndex: 0 });
+
+        currentPoint = pEnd;
+        points.push({ ...currentPoint });
+        newSegment.values.push(p1.x, p1.y, pEnd.x, pEnd.y);
+        lastControl = p1;
+        break;
+      }
+       case 'T': {
+        const [x, y] = args;
+        const p1 = lastControl ? { x: 2 * currentPoint.x - lastControl.x, y: 2 * currentPoint.y - lastControl.y } : { ...currentPoint };
+        const pEnd = { x: isRelative ? currentPoint.x + x : x, y: isRelative ? currentPoint.y + y : y };
+
+        newSegment.command = 'Q'; // Convert T to Q
+        
+        handles.push({ start: currentPoint, end: p1, segmentIndex: segments.length, valueIndex: 0 });
+        handles.push({ start: pEnd, end: p1, segmentIndex: segments.length, valueIndex: 0 });
+
+        currentPoint = pEnd;
+        points.push({ ...currentPoint });
+        newSegment.values.push(p1.x, p1.y, pEnd.x, pEnd.y);
+        lastControl = p1;
+        break;
+      }
       case 'Z':
-        currentPoint = startPoint;
+        currentPoint = subpathStart;
+        lastControl = null;
+        newSegment.values = [];
         break;
+      default:
+        continue;
     }
+    segments.push(newSegment);
   }
 
-  return { points, handles };
+  return { points, handles, segments };
 };
