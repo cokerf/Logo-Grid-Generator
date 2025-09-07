@@ -95,10 +95,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     });
   };
   
-  const handleToggle = (e: ChangeEvent<HTMLInputElement>, section: keyof CustomizationOptions) => {
-      setCustomization({...customization, [section]: e.target.checked});
-  }
-
   const handleSimpleCustomizationChange = (key: keyof CustomizationOptions, value: any) => {
     setCustomization({ ...customization, [key]: value });
   };
@@ -125,7 +121,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       >
         <CustomizeSection title="Fill">
             <SettingRow label="Show Fill">
-                <input type="checkbox" checked={customization.showFill} onChange={e => handleToggle(e, 'showFill')} className="toggle-checkbox" />
+                <input type="checkbox" checked={customization.showFill} onChange={e => handleSimpleCustomizationChange('showFill', e.target.checked)} className="toggle-checkbox" />
+            </SettingRow>
+             <SettingRow label="Color">
+                <input type="color" value={customization.fillColor} onChange={e => handleSimpleCustomizationChange('fillColor', e.target.value)} className="w-8 h-8"/>
             </SettingRow>
         </CustomizeSection>
         <CustomizeSection title="Path">
@@ -142,6 +141,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </SettingRow>
              <SettingRow label="Size">
                 <input type="range" min="2" max="20" step="1" value={customization.anchors.size} onChange={e => handleCustomizationChange('anchors', 'size', parseInt(e.target.value))} />
+            </SettingRow>
+            <SettingRow label="Shape">
+                <select value={customization.anchors.shape} onChange={e => handleCustomizationChange('anchors', 'shape', e.target.value)} className="bg-gray-200 rounded p-1">
+                    <option value="square">Square</option>
+                    <option value="circle">Circle</option>
+                </select>
             </SettingRow>
         </CustomizeSection>
         <CustomizeSection title="Handles">

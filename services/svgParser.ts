@@ -16,26 +16,53 @@ export const parseSVG = (svgContent: string): ParsedSVG => {
   const viewBoxAttr = svgElement.getAttribute('viewBox');
   const widthAttr = svgElement.getAttribute('width');
   const heightAttr = svgElement.getAttribute('height');
-
-  let viewBox: number[] = [0, 0, 0, 0];
-  if (viewBoxAttr) {
-    viewBox = viewBoxAttr.split(/[\s,]+/).map(Number);
-  }
-
-  const width = parseFloat(widthAttr || '0') || (viewBox[2] || 0);
-  const height = parseFloat(heightAttr || '0') || (viewBox[3] || 0);
-  
-  if (width === 0 || height === 0) {
-      if(viewBox[2] && viewBox[3]) {
-        // Fallback to viewbox dimensions
-      } else {
-        throw new Error('SVG has no dimensions (width/height or viewBox).');
-      }
-  }
-
-  const finalViewBox = viewBoxAttr || `0 0 ${width} ${height}`;
-
   const pathElements = Array.from(svgElement.querySelectorAll('path'));
+
+  let viewBox: number[] = [];
+  if (viewBoxAttr) {
+    viewBox = viewBoxAttr.split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+  }
+
+  let width = parseFloat(widthAttr || '0') || (viewBox[2] || 0);
+  let height = parseFloat(heightAttr || '0') || (viewBox[3] || 0);
+  let finalViewBox = viewBoxAttr;
+
+  // If dimensions are still zero, and there's content, calculate from bounding box
+  if ((width === 0 || height === 0) && pathElements.length > 0) {
+    const tempSvg = svgElement.cloneNode(true) as SVGSVGElement;
+    tempSvg.removeAttribute('width');
+    tempSvg.removeAttribute('height');
+    tempSvg.removeAttribute('viewBox');
+    tempSvg.style.position = 'absolute';
+    tempSvg.style.visibility = 'hidden';
+    
+    document.body.appendChild(tempSvg);
+    try {
+      const bbox = tempSvg.getBBox();
+      if (bbox.width > 0 && bbox.height > 0) {
+        const padding = Math.max(bbox.width, bbox.height) * 0.05; // 5% padding
+        const newWidth = bbox.width + padding * 2;
+        const newHeight = bbox.height + padding * 2;
+        width = newWidth;
+        height = newHeight;
+        finalViewBox = `${bbox.x - padding} ${bbox.y - padding} ${newWidth} ${newHeight}`;
+      }
+    } catch (e) {
+      console.error("Could not calculate bounding box for SVG:", e);
+    } finally {
+      document.body.removeChild(tempSvg);
+    }
+  }
+  
+  // If still no dimensions (e.g., empty SVG), provide a default size
+  if (width === 0 || height === 0) {
+      width = 100;
+      height = 100;
+  }
+  
+  if (!finalViewBox) {
+    finalViewBox = `0 0 ${width} ${height}`;
+  }
 
   const paths: SVGPathData[] = pathElements.map(pathEl => {
     const d = pathEl.getAttribute('d') || '';

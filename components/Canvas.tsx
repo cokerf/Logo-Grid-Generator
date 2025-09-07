@@ -30,16 +30,28 @@ const Gridlines: React.FC<{ width: number, height: number, options: Customizatio
 const Anchors: React.FC<{ points: Point[], options: CustomizationOptions['anchors'] }> = ({ points, options }) => (
   <g>
     {points.map((p, i) => (
-      <rect 
-        key={i} 
-        x={p.x - options.size / 2} 
-        y={p.y - options.size / 2} 
-        width={options.size} 
-        height={options.size} 
-        fill={options.color}
-        stroke={'#FFF'}
-        strokeWidth="1" 
-      />
+      options.shape === 'square' ? (
+        <rect 
+          key={i} 
+          x={p.x - options.size / 2} 
+          y={p.y - options.size / 2} 
+          width={options.size} 
+          height={options.size} 
+          fill={options.color}
+          stroke={'#FFF'}
+          strokeWidth="1" 
+        />
+      ) : (
+        <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={options.size / 2}
+            fill={options.color}
+            stroke={'#FFF'}
+            strokeWidth="1"
+        />
+      )
     ))}
   </g>
 );
@@ -160,13 +172,13 @@ export const Canvas: React.FC<CanvasProps> = ({ svgData, svgRef, showAnchors, sh
         {showGridlines && <Gridlines width={svgData.width} height={svgData.height} options={customization.gridlines} />}
 
         {svgData.paths.map((path, i) => {
-            const fillColor = customization.showFill ? customization.path.stroke + '33' : 'none'; // semi-transparent
+            const fillColor = customization.showFill ? customization.fillColor : 'none';
             return (
                 <g key={i}>
                     <path d={path.d} fill={fillColor} stroke={customization.path.stroke} strokeWidth={customization.path.strokeWidth} />
                     {showOutlines && <Outlines path={path} options={customization.outlines} />}
                     {showAnchors && <Anchors points={path.points} options={customization.anchors} />}
-                    {showHandles && <Handles pathIndex={i} handles={path.handles} options={customization.handles} anchorOptions={customization.anchors} onMouseDown={handleMouseDown} />}
+                    {showHandles && path.handles.length > 0 && <Handles pathIndex={i} handles={path.handles} options={customization.handles} anchorOptions={customization.anchors} onMouseDown={handleMouseDown} />}
                 </g>
             )
         })}

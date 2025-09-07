@@ -6,8 +6,9 @@ import { parseSVG, segmentsToD } from './services/svgParser';
 
 const initialCustomization: CustomizationOptions = {
   showFill: true,
+  fillColor: '#cccccc33',
   path: { stroke: '#888888', strokeWidth: 1 },
-  anchors: { color: '#000000', size: 8 },
+  anchors: { color: '#000000', size: 8, shape: 'square' },
   handles: { color: '#888888', width: 1 },
   outlines: { color: '#000000', width: 1, style: 'dashed' },
   gridlines: { color: '#cccccc', width: 0.5 },

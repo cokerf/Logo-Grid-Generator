@@ -33,6 +33,7 @@ export interface ParsedSVG {
 
 export interface CustomizationOptions {
   showFill: boolean;
+  fillColor: string;
   path: {
     stroke: string;
     strokeWidth: number;
@@ -40,6 +41,7 @@ export interface CustomizationOptions {
   anchors: {
     color: string;
     size: number;
+    shape: 'square' | 'circle';
   };
   handles: {
     color: string;
