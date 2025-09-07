@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, LogoIcon, UploadIcon } from './icons';
+import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, LogoIcon, UploadIcon, ExportIcon } from './icons';
 import type { CustomizationOptions } from '../types';
 
 interface ControlPanelProps {
@@ -18,6 +18,8 @@ interface ControlPanelProps {
   openPanel: string | null;
   setOpenPanel: (panel: string | null) => void;
   onFileUpload: (file: File) => void;
+  onExportSVG: () => void;
+  onExportPNG: () => void;
 }
 
 const ToggleButton: React.FC<{
@@ -82,7 +84,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   showAnchors, setShowAnchors, showHandles, setShowHandles,
   showOutlines, setShowOutlines, showGridlines, setShowGridlines,
   onGenerateAll, hasSVG, customization, setCustomization, 
-  openPanel, setOpenPanel, onFileUpload
+  openPanel, setOpenPanel, onFileUpload, onExportSVG, onExportPNG
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -227,6 +229,30 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                  <input type="color" value={customization.canvasBackground} onChange={e => handleSimpleCustomizationChange('canvasBackground', e.target.value)} className="w-8 h-8"/>
             </SettingRow>
         </CustomizeSection>
+      </CollapsiblePanel>
+
+      <CollapsiblePanel
+        Icon={ExportIcon}
+        label="Export"
+        isOpen={openPanel === 'export'}
+        onClick={() => setOpenPanel(openPanel === 'export' ? null : 'export')}
+      >
+        <div className="flex flex-col gap-3">
+            <button
+              onClick={onExportSVG}
+              disabled={!hasSVG}
+              className="w-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
+            >
+              Export as SVG
+            </button>
+            <button
+              onClick={onExportPNG}
+              disabled={!hasSVG}
+              className="w-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
+            >
+              Export as High-Res PNG
+            </button>
+        </div>
       </CollapsiblePanel>
       
       <div className="mt-auto flex flex-col gap-3 pt-4 border-t border-gray-200">
