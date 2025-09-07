@@ -15,6 +15,8 @@ interface CanvasProps {
   snapToGrid: boolean;
   selectedPathIndex: number | null;
   setSelectedPathIndex: (index: number | null) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }
 
 const Grid: React.FC<{ width: number, height: number, options: CustomizationOptions['gridlines'] }> = ({ width, height, options }) => {
@@ -113,7 +115,7 @@ const Outlines: React.FC<{ path: { boundingBox: SVGRect | null }, options: Custo
 
 export const Canvas: React.FC<CanvasProps> = ({ 
   svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, error, customization, 
-  onHandleMove, onPathMove, snapToGrid, selectedPathIndex, setSelectedPathIndex 
+  onHandleMove, onPathMove, snapToGrid, selectedPathIndex, setSelectedPathIndex, onDragStart, onDragEnd 
 }) => {
   const [dragState, setDragState] = useState<{ type: 'handle' | 'path', index: number, pathIndex: number, startPoint: Point } | null>(null);
 
@@ -140,6 +142,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     e.stopPropagation();
     setSelectedPathIndex(pathIndex);
     setDragState({ type, index, pathIndex, startPoint: getSVGPoint(e) });
+    onDragStart();
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -179,6 +182,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   };
 
   const handleMouseUp = () => {
+    if (dragState) {
+      onDragEnd();
+    }
     setDragState(null);
   };
 

@@ -1,8 +1,10 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ControlPanel } from './components/ControlPanel';
 import { Canvas } from './components/Canvas';
 import type { ParsedSVG, CustomizationOptions, Point, PathSegment } from './types';
 import { parseSVG, segmentsToD, parsePathD } from './services/svgParser';
+import { useHistoryState } from './hooks/useHistoryState';
 
 const initialCustomization: CustomizationOptions = {
   showFill: true,
@@ -16,7 +18,18 @@ const initialCustomization: CustomizationOptions = {
 };
 
 export default function App(): JSX.Element {
-  const [svgData, setSvgData] = useState<ParsedSVG | null>(null);
+  const { 
+    state: svgData, 
+    setState: setSvgDataHistory, 
+    resetState: resetSvgDataHistory, 
+    undo, 
+    redo, 
+    canUndo, 
+    canRedo 
+  } = useHistoryState<ParsedSVG | null>(null);
+
+  const [liveSvgData, setLiveSvgData] = useState<ParsedSVG | null>(null);
+
   const [showAnchors, setShowAnchors] = useState<boolean>(false);
   const [showHandles, setShowHandles] = useState<boolean>(false);
   const [showOutlines, setShowOutlines] = useState<boolean>(false);
@@ -39,25 +52,26 @@ export default function App(): JSX.Element {
                 const parsedData = parseSVG(svgContent);
                 if (parsedData.paths.length === 0) {
                     setError("No paths found in the uploaded SVG. Please use an SVG with <path> elements.");
-                    setSvgData(null);
+                    resetSvgDataHistory(null);
                 } else {
-                    setSvgData(parsedData);
+                    resetSvgDataHistory(parsedData);
                     setExportDimensions({ width: parsedData.width, height: parsedData.height });
                     setSelectedPathIndex(null);
                     setError(null);
                 }
             } catch (err) {
                 setError("Failed to parse the SVG file. Please check its format.");
-                setSvgData(null);
+                resetSvgDataHistory(null);
                 console.error(err);
             }
         }
     };
     reader.onerror = () => {
         setError("Failed to read the file.");
-        setSvgData(null);
+        resetSvgDataHistory(null);
     };
     reader.readAsText(file);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -88,12 +102,26 @@ export default function App(): JSX.Element {
 
     document.body.removeChild(tempSvg);
     
-    setSvgData(prev => prev ? { ...prev, paths: updatedPaths } : null);
+    setSvgDataHistory({ ...svgData, paths: updatedPaths });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [svgData?.rawSVG]);
 
+  const handleDragStart = useCallback(() => {
+    if (svgData) {
+      setLiveSvgData(JSON.parse(JSON.stringify(svgData)));
+    }
+  }, [svgData]);
+
+  const handleDragEnd = useCallback(() => {
+    if (liveSvgData) {
+      setSvgDataHistory(liveSvgData);
+      setLiveSvgData(null);
+    }
+  }, [liveSvgData, setSvgDataHistory]);
+
+
   const handleHandleMove = useCallback((pathIndex: number, handleIndex: number, newPosition: Point) => {
-    setSvgData(currentSvgData => {
+    setLiveSvgData(currentSvgData => {
       if (!currentSvgData) return null;
 
       const newPaths = [...currentSvgData.paths];
@@ -130,7 +158,7 @@ export default function App(): JSX.Element {
   }, []);
   
   const handlePathMove = useCallback((pathIndex: number, delta: Point) => {
-    setSvgData(currentSvgData => {
+    setLiveSvgData(currentSvgData => {
       if (!currentSvgData) return null;
 
       const newPaths = [...currentSvgData.paths];
@@ -171,6 +199,31 @@ export default function App(): JSX.Element {
     });
   }, []);
 
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isCtrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
+
+      if (isCtrlOrCmd && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      } else if (isCtrlOrCmd && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [undo, redo]);
+
   const triggerDownload = (href: string, filename: string) => {
     const link = document.createElement('a');
     link.href = href;
@@ -206,7 +259,8 @@ export default function App(): JSX.Element {
   }, [svgRef, customization.canvasBackground, exportDimensions]);
 
   const handleExportPNG = useCallback(() => {
-    if (!svgRef.current || !svgData) {
+    const currentSvgData = liveSvgData || svgData;
+    if (!svgRef.current || !currentSvgData) {
         setError("SVG data not available for PNG export.");
         return;
     }
@@ -251,8 +305,9 @@ export default function App(): JSX.Element {
     };
     img.src = url;
 
-  }, [svgRef, svgData, customization.canvasBackground, exportDimensions]);
+  }, [svgRef, svgData, liveSvgData, customization.canvasBackground, exportDimensions]);
 
+  const displayedSvgData = liveSvgData || svgData;
 
   return (
     <div className="flex h-screen w-screen font-sans text-black bg-white transition-colors duration-300">
@@ -266,8 +321,8 @@ export default function App(): JSX.Element {
         showGridlines={showGridlines}
         setShowGridlines={setShowGridlines}
         onGenerateAll={generateAll}
-        hasSVG={!!svgData}
-        svgData={svgData}
+        hasSVG={!!displayedSvgData}
+        svgData={displayedSvgData}
         customization={customization}
         setCustomization={setCustomization}
         openPanel={openPanel}
@@ -279,10 +334,14 @@ export default function App(): JSX.Element {
         setSnapToGrid={setSnapToGrid}
         exportDimensions={exportDimensions}
         setExportDimensions={setExportDimensions}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
       <main className="flex-1 flex items-center justify-center p-4 bg-gray-100 transition-colors duration-300" onClick={() => setSelectedPathIndex(null)}>
         <Canvas 
-          svgData={svgData} 
+          svgData={displayedSvgData} 
           svgRef={svgRef}
           showAnchors={showAnchors}
           showHandles={showHandles}
@@ -292,9 +351,12 @@ export default function App(): JSX.Element {
           customization={customization}
           onHandleMove={handleHandleMove}
           onPathMove={handlePathMove}
+          // FIX: Corrected typo from snapToTogrid to snapToGrid
           snapToGrid={snapToGrid}
           selectedPathIndex={selectedPathIndex}
           setSelectedPathIndex={setSelectedPathIndex}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
         />
       </main>
     </div>

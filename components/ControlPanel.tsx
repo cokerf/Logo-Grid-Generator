@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, LogoIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon } from './icons';
+import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon, UndoIcon, RedoIcon } from './icons';
 import type { CustomizationOptions, ParsedSVG } from '../types';
 import { ColorInput } from './ColorInput';
 
@@ -26,6 +26,10 @@ interface ControlPanelProps {
   setSnapToGrid: (value: boolean) => void;
   exportDimensions: { width: number; height: number; };
   setExportDimensions: (dims: { width: number; height: number; }) => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const ToggleButton: React.FC<{
@@ -92,6 +96,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onGenerateAll, hasSVG, svgData, customization, setCustomization, 
   openPanel, setOpenPanel, onFileUpload, onExportSVG, onExportPNG,
   snapToGrid, setSnapToGrid, exportDimensions, setExportDimensions,
+  onUndo, onRedo, canUndo, canRedo,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAspectRatioLocked, setAspectRatioLocked] = useState(true);
@@ -142,7 +147,25 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   return (
     <aside className="w-80 bg-white p-4 flex flex-col gap-4 overflow-y-auto">
       <div className="flex items-center pb-2 border-b border-gray-200">
-        <h1 className="text-lg font-semibold">Logo Grid Generator</h1>
+        <h1 className="text-lg font-semibold mr-auto">Logo Grid Generator</h1>
+        <div className="flex items-center gap-1">
+            <button
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="p-2 rounded hover:bg-gray-200 disabled:text-gray-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+              aria-label="Undo"
+            >
+              <UndoIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="p-2 rounded hover:bg-gray-200 disabled:text-gray-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+              aria-label="Redo"
+            >
+              <RedoIcon className="w-5 h-5" />
+            </button>
+          </div>
       </div>
 
       <div className="pb-4 border-b border-gray-200">

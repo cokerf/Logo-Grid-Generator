@@ -105,3 +105,17 @@ export const UnlockIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
         <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
     </svg>
 );
+
+export const UndoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9h12a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H7" />
+      <path d="m7 9-4 4 4 4" />
+    </svg>
+);
+  
+export const RedoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 9H9a5 5 0 0 0-5 5v0a5 5 0 0 0 5 5h8" />
+      <path d="m17 9 4 4-4 4" />
+    </svg>
+);
