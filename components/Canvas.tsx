@@ -1,5 +1,4 @@
-
-import React, { useState, MouseEvent, useMemo } from 'react';
+import React, { useState, MouseEvent, useMemo, DragEvent } from 'react';
 import type { ParsedSVG, Point, Handle, CustomizationOptions, SVGPathData } from '../types';
 
 interface CanvasProps {
@@ -20,6 +19,10 @@ interface CanvasProps {
   setSelectedPathIndex: (index: number | null) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  onFileUpload: (file: File) => void;
+  onUploadClick: () => void;
+  isDraggingOver: boolean;
+  setIsDraggingOver: (isDragging: boolean) => void;
 }
 
 const Grid: React.FC<{ viewBox: {x:number, y:number, width: number, height: number}, options: CustomizationOptions['gridlines'] }> = ({ viewBox, options }) => {
@@ -214,7 +217,8 @@ const AlignmentGuides: React.FC<{
 
 export const Canvas: React.FC<CanvasProps> = ({ 
   svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, showElementGuides, showAlignmentGuides, error, customization, 
-  onHandleMove, onPathMove, snapToGrid, selectedPathIndex, setSelectedPathIndex, onDragStart, onDragEnd 
+  onHandleMove, onPathMove, snapToGrid, selectedPathIndex, setSelectedPathIndex, onDragStart, onDragEnd,
+  onFileUpload, onUploadClick, isDraggingOver, setIsDraggingOver
 }) => {
   const [dragState, setDragState] = useState<{ type: 'handle' | 'path', index: number, pathIndex: number, startPoint: Point } | null>(null);
 
@@ -300,6 +304,31 @@ export const Canvas: React.FC<CanvasProps> = ({
     setDragState(null);
   };
 
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'image/svg+xml') {
+        onFileUpload(file);
+      }
+      e.dataTransfer.clearData();
+    }
+  };
+
   if (error) {
     return (
         <div className="w-full h-full max-w-3xl bg-gray-200 rounded-lg border-2 border-dashed border-red-500/50 flex flex-col items-center justify-center p-8 text-center text-red-500">
@@ -311,12 +340,20 @@ export const Canvas: React.FC<CanvasProps> = ({
   
   if (!svgData) {
     return (
-      <div className="w-full h-full max-w-3xl bg-gray-200/50 rounded-lg border-2 border-dashed border-gray-400 flex flex-col items-center justify-center p-8 text-center text-gray-500">
+      <div 
+        className={`w-full h-full max-w-3xl rounded-lg border-2 border-dashed flex flex-col items-center justify-center p-8 text-center text-gray-500 cursor-pointer transition-colors duration-200 ${isDraggingOver ? 'border-blue-500 bg-blue-50' : 'border-gray-400 bg-gray-200/50'}`}
+        onClick={onUploadClick}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        role="button"
+        aria-label="Upload SVG"
+      >
         <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
         <h2 className="text-xl font-bold text-black mb-2">Logo Grid Generator</h2>
-        <p className="mb-6">Upload an SVG file to begin.</p>
+        <p className="mb-6">Drop an SVG file here or click to upload.</p>
       </div>
     );
   }
@@ -328,6 +365,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
     >
       <svg
         ref={svgRef}

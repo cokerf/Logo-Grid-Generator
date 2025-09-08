@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ControlPanel } from './components/ControlPanel';
 import { Canvas } from './components/Canvas';
@@ -44,10 +43,17 @@ export default function App(): JSX.Element {
   const [snapToGrid, setSnapToGrid] = useState<boolean>(false);
   const [selectedPathIndex, setSelectedPathIndex] = useState<number | null>(null);
   const [exportDimensions, setExportDimensions] = useState({ width: 0, height: 0 });
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   const svgRef = useRef<SVGSVGElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
   const handleFileUpload = useCallback((file: File) => {
+    setIsDraggingOver(false);
     const reader = new FileReader();
     reader.onload = (e) => {
         const svgContent = e.target?.result as string;
@@ -75,19 +81,17 @@ export default function App(): JSX.Element {
         resetSvgDataHistory(null);
     };
     reader.readAsText(file);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [resetSvgDataHistory]);
 
-
-  const generateAll = useCallback(() => {
-    const areAllOn = showAnchors && showHandles && showOutlines && showGridlines && showElementGuides && showAlignmentGuides;
-    setShowAnchors(!areAllOn);
-    setShowHandles(!areAllOn);
-    setShowOutlines(!areAllOn);
-    setShowGridlines(!areAllOn);
-    setShowElementGuides(!areAllOn);
-    setShowAlignmentGuides(!areAllOn);
-  }, [showAnchors, showHandles, showOutlines, showGridlines, showElementGuides, showAlignmentGuides]);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        handleFileUpload(file);
+    }
+    if(event.target) {
+        event.target.value = '';
+    }
+  };
 
   const displayedSvgData = liveSvgData || svgData;
 
@@ -337,7 +341,15 @@ export default function App(): JSX.Element {
 
 
   return (
-    <div className="flex h-screen w-screen font-sans text-black bg-white transition-colors duration-300">
+    <div className="flex h-screen w-screen text-black bg-white transition-colors duration-300">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/svg+xml"
+        className="hidden"
+        aria-label="Upload SVG file"
+      />
       <ControlPanel
         showAnchors={showAnchors}
         setShowAnchors={setShowAnchors}
@@ -351,14 +363,13 @@ export default function App(): JSX.Element {
         setShowElementGuides={setShowElementGuides}
         showAlignmentGuides={showAlignmentGuides}
         setShowAlignmentGuides={setShowAlignmentGuides}
-        onGenerateAll={generateAll}
         hasSVG={!!displayedSvgData}
         svgData={displayedSvgData}
         customization={customization}
         setCustomization={setCustomization}
         openPanel={openPanel}
         setOpenPanel={setOpenPanel}
-        onFileUpload={handleFileUpload}
+        onUploadClick={handleUploadClick}
         onExportSVG={handleExportSVG}
         onExportPNG={handleExportPNG}
         snapToGrid={snapToGrid}
@@ -389,6 +400,10 @@ export default function App(): JSX.Element {
           setSelectedPathIndex={setSelectedPathIndex}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onFileUpload={handleFileUpload}
+          onUploadClick={handleUploadClick}
+          isDraggingOver={isDraggingOver}
+          setIsDraggingOver={setIsDraggingOver}
         />
       </main>
     </div>
