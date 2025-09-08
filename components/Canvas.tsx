@@ -1,3 +1,4 @@
+
 import React, { useState, MouseEvent, useMemo } from 'react';
 import type { ParsedSVG, Point, Handle, CustomizationOptions, SVGPathData } from '../types';
 
@@ -9,6 +10,7 @@ interface CanvasProps {
   showOutlines: boolean;
   showGridlines: boolean;
   showElementGuides: boolean;
+  showAlignmentGuides: boolean;
   error: string | null;
   customization: CustomizationOptions;
   onHandleMove: (pathIndex: number, handleIndex: number, newPosition: Point) => void;
@@ -20,21 +22,47 @@ interface CanvasProps {
   onDragEnd: () => void;
 }
 
-const Grid: React.FC<{ width: number, height: number, options: CustomizationOptions['gridlines'] }> = ({ width, height, options }) => {
-    const step = Math.min(width, height) / 20;
+const Grid: React.FC<{ viewBox: {x:number, y:number, width: number, height: number}, options: CustomizationOptions['gridlines'] }> = ({ viewBox, options }) => {
     const items = [];
+    const { x, y, width, height } = viewBox;
 
-    if (options.style === 'lines') {
-        for (let i = 0; i <= width; i += step) {
-            items.push(<line key={`v-${i}`} x1={i} y1={0} x2={i} y2={height} stroke={options.color} strokeWidth={options.width} />);
+    if (options.type === 'square') {
+        const density = Math.max(1, options.density);
+        const step = Math.min(width, height) / density;
+        if (step > 0) {
+            if (options.style === 'lines') {
+                for (let i = 0; i <= width + 0.001; i += step) {
+                    items.push(<line key={`v-${i}`} x1={x + i} y1={y} x2={x + i} y2={y + height} stroke={options.color} strokeWidth={options.width} />);
+                }
+                for (let i = 0; i <= height + 0.001; i += step) {
+                    items.push(<line key={`h-${i}`} x1={x} y1={y + i} x2={x + width} y2={y + i} stroke={options.color} strokeWidth={options.width} />);
+                }
+            } else { // Dots
+                for (let i = 0; i <= width + 0.001; i += step) {
+                    for (let j = 0; j <= height + 0.001; j += step) {
+                        items.push(<circle key={`d-${i}-${j}`} cx={x + i} cy={y + j} r={options.width} fill={options.color} />);
+                    }
+                }
+            }
         }
-        for (let i = 0; i <= height; i += step) {
-            items.push(<line key={`h-${i}`} x1={0} y1={i} x2={width} y2={i} stroke={options.color} strokeWidth={options.width} />);
-        }
-    } else { // Dots
-        for (let i = 0; i <= width; i += step) {
-            for (let j = 0; j <= height; j += step) {
-                items.push(<circle key={`d-${i}-${j}`} cx={i} cy={j} r={options.width} fill={options.color} />);
+    } else { // Columns & Rows
+        const cols = Math.max(1, options.columns);
+        const rows = Math.max(1, options.rows);
+        const colStep = width / cols;
+        const rowStep = height / rows;
+
+        if (options.style === 'lines') {
+            for (let i = 0; i <= cols; i++) {
+                items.push(<line key={`v-${i}`} x1={x + i * colStep} y1={y} x2={x + i * colStep} y2={y + height} stroke={options.color} strokeWidth={options.width} />);
+            }
+            for (let i = 0; i <= rows; i++) {
+                items.push(<line key={`h-${i}`} x1={x} y1={y + i * rowStep} x2={x + width} y2={y + i * rowStep} stroke={options.color} strokeWidth={options.width} />);
+            }
+        } else { // Dots
+             for (let i = 0; i <= cols; i++) {
+                for (let j = 0; j <= rows; j++) {
+                    items.push(<circle key={`d-${i}-${j}`} cx={x + i * colStep} cy={y + j * rowStep} r={options.width} fill={options.color} />);
+                }
             }
         }
     }
@@ -149,23 +177,64 @@ const ElementGuides: React.FC<{
   );
 };
 
+const AlignmentGuides: React.FC<{
+  paths: SVGPathData[];
+  viewBox: { x: number; y: number; width: number; height: number };
+  options: CustomizationOptions['alignmentGuides'];
+}> = ({ paths, viewBox, options }) => {
+  const commonProps = {
+    stroke: options.color,
+    strokeWidth: options.width,
+    strokeDasharray: options.style === 'dashed' ? '4 2' : 'none',
+  };
+
+  const guides = paths.flatMap((path, i) => {
+    if (!path.boundingBox) return [];
+    const { x, y, width, height } = path.boundingBox;
+    const midX = x + width / 2;
+    const midY = y + height / 2;
+    return [
+      // Vertical
+      <line key={`av-${i}-1`} x1={x} y1={viewBox.y} x2={x} y2={viewBox.y + viewBox.height} {...commonProps} />,
+      <line key={`av-${i}-2`} x1={midX} y1={viewBox.y} x2={midX} y2={viewBox.y + viewBox.height} {...commonProps} />,
+      <line key={`av-${i}-3`} x1={x + width} y1={viewBox.y} x2={x + width} y2={viewBox.y + viewBox.height} {...commonProps} />,
+      // Horizontal
+      <line key={`ah-${i}-1`} x1={viewBox.x} y1={y} x2={viewBox.x + viewBox.width} y2={y} {...commonProps} />,
+      <line key={`ah-${i}-2`} x1={viewBox.x} y1={midY} x2={viewBox.x + viewBox.width} y2={midY} {...commonProps} />,
+      <line key={`ah-${i}-3`} x1={viewBox.x} y1={y + height} x2={viewBox.x + viewBox.width} y2={y + height} {...commonProps} />,
+      // Diagonal
+      <line key={`ad-${i}-1`} x1={x} y1={y} x2={x + width} y2={y + height} {...commonProps} />,
+      <line key={`ad-${i}-2`} x1={x + width} y1={y} x2={x} y2={y + height} {...commonProps} />,
+    ];
+  });
+
+  return <g id="alignment-guides">{guides}</g>;
+};
+
 
 export const Canvas: React.FC<CanvasProps> = ({ 
-  svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, showElementGuides, error, customization, 
+  svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, showElementGuides, showAlignmentGuides, error, customization, 
   onHandleMove, onPathMove, snapToGrid, selectedPathIndex, setSelectedPathIndex, onDragStart, onDragEnd 
 }) => {
   const [dragState, setDragState] = useState<{ type: 'handle' | 'path', index: number, pathIndex: number, startPoint: Point } | null>(null);
-
-  const gridStep = useMemo(() => {
-    if (!svgData) return 1;
-    return Math.min(svgData.width, svgData.height) / 20;
-  }, [svgData]);
 
   const viewBox = useMemo(() => {
     if (!svgData) return { x: 0, y: 0, width: 0, height: 0 };
     const parts = svgData.viewBox.split(' ').map(parseFloat);
     return { x: parts[0] || 0, y: parts[1] || 0, width: parts[2] || 0, height: parts[3] || 0 };
   }, [svgData]);
+
+  const gridStep = useMemo(() => {
+    if (!svgData) return 1;
+    // Snap to the custom grid if it's column/row based
+    if(showGridlines && customization.gridlines.type === 'columns') {
+       return Math.min(viewBox.width / customization.gridlines.columns, viewBox.height / customization.gridlines.rows);
+    }
+     if(showGridlines && customization.gridlines.type === 'square') {
+       return Math.min(viewBox.width, viewBox.height) / customization.gridlines.density;
+    }
+    return Math.min(svgData.width, svgData.height) / 20;
+  }, [svgData, showGridlines, customization.gridlines, viewBox]);
 
   const getSVGPoint = (e: MouseEvent): Point => {
     if (!svgRef.current) return { x: 0, y: 0 };
@@ -177,8 +246,8 @@ export const Canvas: React.FC<CanvasProps> = ({
     return { x: transformedPt.x, y: transformedPt.y };
   };
 
-  const snap = (coord: number) => {
-    return Math.round(coord / gridStep) * gridStep;
+  const snap = (coord: number, origin: number = 0) => {
+    return Math.round((coord - origin) / gridStep) * gridStep + origin;
   };
 
   const handleMouseDown = (e: MouseEvent, type: 'handle' | 'path', pathIndex: number, index: number) => {
@@ -196,7 +265,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     if (dragState.type === 'handle') {
       if (snapToGrid) {
-        newPos = { x: snap(currentPoint.x), y: snap(currentPoint.y) };
+        newPos = { x: snap(currentPoint.x, viewBox.x), y: snap(currentPoint.y, viewBox.y) };
       }
       onHandleMove(dragState.pathIndex, dragState.index, newPos);
     } 
@@ -209,8 +278,8 @@ export const Canvas: React.FC<CanvasProps> = ({
 
       // Apply snapping to the delta
       if (snapToGrid) {
-        const snappedStart = { x: snap(dragState.startPoint.x), y: snap(dragState.startPoint.y) };
-        const snappedCurrent = { x: snap(currentPoint.x), y: snap(currentPoint.y) };
+        const snappedStart = { x: snap(dragState.startPoint.x, viewBox.x), y: snap(dragState.startPoint.y, viewBox.y) };
+        const snappedCurrent = { x: snap(currentPoint.x, viewBox.x), y: snap(currentPoint.y, viewBox.y) };
         delta.x = snappedCurrent.x - snappedStart.x;
         delta.y = snappedCurrent.y - snappedStart.y;
         if(Math.abs(delta.x) > 0 || Math.abs(delta.y) > 0) {
@@ -266,8 +335,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         className="max-w-full max-h-full"
         preserveAspectRatio="xMidYMid meet"
       >
-        {showGridlines && <Grid width={svgData.width} height={svgData.height} options={customization.gridlines} />}
-        
+        {showGridlines && <Grid viewBox={viewBox} options={customization.gridlines} />}
+        {showAlignmentGuides && svgData && <AlignmentGuides paths={svgData.paths} viewBox={viewBox} options={customization.alignmentGuides} />}
+
         {showElementGuides && selectedPathIndex !== null && svgData.paths[selectedPathIndex] && (
           <ElementGuides 
             path={svgData.paths[selectedPathIndex]} 

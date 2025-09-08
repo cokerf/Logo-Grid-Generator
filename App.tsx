@@ -13,8 +13,9 @@ const initialCustomization: CustomizationOptions = {
   anchors: { color: '#000000FF', size: 8, shape: 'square' },
   handles: { color: '#888888FF', width: 1 },
   outlines: { color: '#000000FF', width: 1, style: 'dashed' },
-  gridlines: { color: '#ccccccFF', width: 0.5, style: 'lines' },
+  gridlines: { color: '#ccccccFF', width: 0.5, style: 'lines', type: 'square', density: 20, columns: 10, rows: 10 },
   elementGuides: { color: '#007aff80', width: 0.5, style: 'dashed' },
+  alignmentGuides: { color: '#ff478580', width: 0.5, style: 'dashed' },
   canvasBackground: '#f9fafbFF',
 };
 
@@ -36,6 +37,7 @@ export default function App(): JSX.Element {
   const [showOutlines, setShowOutlines] = useState<boolean>(false);
   const [showGridlines, setShowGridlines] = useState<boolean>(true);
   const [showElementGuides, setShowElementGuides] = useState<boolean>(false);
+  const [showAlignmentGuides, setShowAlignmentGuides] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [openPanel, setOpenPanel] = useState<string | null>(null);
   const [customization, setCustomization] = useState<CustomizationOptions>(initialCustomization);
@@ -78,13 +80,16 @@ export default function App(): JSX.Element {
 
 
   const generateAll = useCallback(() => {
-    const areAllOn = showAnchors && showHandles && showOutlines && showGridlines && showElementGuides;
+    const areAllOn = showAnchors && showHandles && showOutlines && showGridlines && showElementGuides && showAlignmentGuides;
     setShowAnchors(!areAllOn);
     setShowHandles(!areAllOn);
     setShowOutlines(!areAllOn);
     setShowGridlines(!areAllOn);
     setShowElementGuides(!areAllOn);
-  }, [showAnchors, showHandles, showOutlines, showGridlines, showElementGuides]);
+    setShowAlignmentGuides(!areAllOn);
+  }, [showAnchors, showHandles, showOutlines, showGridlines, showElementGuides, showAlignmentGuides]);
+
+  const displayedSvgData = liveSvgData || svgData;
 
   // Effect to add bounding boxes after parsing
   useEffect(() => {
@@ -260,6 +265,10 @@ export default function App(): JSX.Element {
     if (guides) {
         guides.remove();
     }
+     const alignmentGuides = svgElement.querySelector('#alignment-guides');
+    if (alignmentGuides) {
+        alignmentGuides.remove();
+    }
 
     const svgString = new XMLSerializer().serializeToString(svgElement);
     const blob = new Blob([svgString], { type: 'image/svg+xml' });
@@ -269,8 +278,7 @@ export default function App(): JSX.Element {
   }, [svgRef, customization.canvasBackground, exportDimensions]);
 
   const handleExportPNG = useCallback(() => {
-    const currentSvgData = liveSvgData || svgData;
-    if (!svgRef.current || !currentSvgData) {
+    if (!svgRef.current || !displayedSvgData) {
         setError("SVG data not available for PNG export.");
         return;
     }
@@ -298,6 +306,10 @@ export default function App(): JSX.Element {
     if (guides) {
         guides.remove();
     }
+    const alignmentGuides = svgElement.querySelector('#alignment-guides');
+    if (alignmentGuides) {
+        alignmentGuides.remove();
+    }
     
     const svgString = new XMLSerializer().serializeToString(svgElement);
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
@@ -321,9 +333,8 @@ export default function App(): JSX.Element {
     };
     img.src = url;
 
-  }, [svgRef, svgData, liveSvgData, customization.canvasBackground, exportDimensions]);
+  }, [svgRef, displayedSvgData, customization.canvasBackground, exportDimensions]);
 
-  const displayedSvgData = liveSvgData || svgData;
 
   return (
     <div className="flex h-screen w-screen font-sans text-black bg-white transition-colors duration-300">
@@ -338,6 +349,8 @@ export default function App(): JSX.Element {
         setShowGridlines={setShowGridlines}
         showElementGuides={showElementGuides}
         setShowElementGuides={setShowElementGuides}
+        showAlignmentGuides={showAlignmentGuides}
+        setShowAlignmentGuides={setShowAlignmentGuides}
         onGenerateAll={generateAll}
         hasSVG={!!displayedSvgData}
         svgData={displayedSvgData}
@@ -366,11 +379,11 @@ export default function App(): JSX.Element {
           showOutlines={showOutlines}
           showGridlines={showGridlines}
           showElementGuides={showElementGuides}
+          showAlignmentGuides={showAlignmentGuides}
           error={error}
           customization={customization}
           onHandleMove={handleHandleMove}
           onPathMove={handlePathMove}
-          // FIX: Corrected typo from snapToTogrid to snapToGrid
           snapToGrid={snapToGrid}
           selectedPathIndex={selectedPathIndex}
           setSelectedPathIndex={setSelectedPathIndex}

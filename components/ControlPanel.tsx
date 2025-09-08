@@ -1,5 +1,6 @@
+
 import React, { useRef, useState, useEffect } from 'react';
-import { AnchorIcon, HandlesIcon, OutlinesIcon, CanvasGridIcon, ElementGuidesIcon, CustomizeIcon, PreferencesIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon, UndoIcon, RedoIcon } from './icons';
+import { AnchorIcon, HandlesIcon, OutlinesIcon, CanvasGridIcon, ElementGuidesIcon, AlignmentIcon, CustomizeIcon, PreferencesIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon, UndoIcon, RedoIcon } from './icons';
 import type { CustomizationOptions, ParsedSVG } from '../types';
 import { ColorInput } from './ColorInput';
 
@@ -14,6 +15,8 @@ interface ControlPanelProps {
   setShowGridlines: (value: boolean) => void;
   showElementGuides: boolean;
   setShowElementGuides: (value: boolean) => void;
+  showAlignmentGuides: boolean;
+  setShowAlignmentGuides: (value: boolean) => void;
   onGenerateAll: () => void;
   hasSVG: boolean;
   svgData: ParsedSVG | null;
@@ -96,7 +99,7 @@ const CustomizeSection: React.FC<{title: string, children: React.ReactNode}> = (
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   showAnchors, setShowAnchors, showHandles, setShowHandles,
   showOutlines, setShowOutlines, showGridlines, setShowGridlines,
-  showElementGuides, setShowElementGuides,
+  showElementGuides, setShowElementGuides, showAlignmentGuides, setShowAlignmentGuides,
   onGenerateAll, hasSVG, svgData, customization, setCustomization, 
   openPanel, setOpenPanel, onFileUpload, onExportSVG, onExportPNG,
   snapToGrid, setSnapToGrid, exportDimensions, setExportDimensions,
@@ -190,12 +193,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </button>
       </div>
       
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <ToggleButton Icon={AnchorIcon} label="Anchors" isActive={showAnchors} onClick={() => setShowAnchors(!showAnchors)} />
         <ToggleButton Icon={HandlesIcon} label="Handles" isActive={showHandles} onClick={() => setShowHandles(!showHandles)} />
         <ToggleButton Icon={OutlinesIcon} label="Outlines" isActive={showOutlines} onClick={() => setShowOutlines(!showOutlines)} />
         <ToggleButton Icon={CanvasGridIcon} label="Grid" isActive={showGridlines} onClick={() => setShowGridlines(!showGridlines)} />
-        <ToggleButton Icon={ElementGuidesIcon} label="Guides" isActive={showElementGuides} onClick={() => setShowElementGuides(!showElementGuides)} className="col-span-2" />
+        <ToggleButton Icon={ElementGuidesIcon} label="Guides" isActive={showElementGuides} onClick={() => setShowElementGuides(!showElementGuides)} />
+        <ToggleButton Icon={AlignmentIcon} label="Alignment" isActive={showAlignmentGuides} onClick={() => setShowAlignmentGuides(!showAlignmentGuides)} />
       </div>
 
       <CollapsiblePanel
@@ -228,7 +232,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <input type="range" min="2" max="20" step="1" value={customization.anchors.size} onChange={e => handleCustomizationChange('anchors', 'size', parseInt(e.target.value))} />
             </SettingRow>
             <SettingRow label="Shape">
-                <select value={customization.anchors.shape} onChange={e => handleCustomizationChange('anchors', 'shape', e.target.value)} className="bg-gray-200 rounded p-1 text-xs">
+                <select value={customization.anchors.shape} onChange={e => handleCustomizationChange('anchors', 'shape', e.target.value)} className="bg-gray-200 rounded p-1 text-xs w-full">
                     <option value="square">Square</option>
                     <option value="circle">Circle</option>
                 </select>
@@ -250,24 +254,44 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <input type="range" min="0.1" max="5" step="0.1" value={customization.outlines.width} onChange={e => handleCustomizationChange('outlines', 'width', parseFloat(e.target.value))} />
             </SettingRow>
             <SettingRow label="Style">
-                <select value={customization.outlines.style} onChange={e => handleCustomizationChange('outlines', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs">
+                <select value={customization.outlines.style} onChange={e => handleCustomizationChange('outlines', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs w-full">
                     <option value="solid">Solid</option>
                     <option value="dashed">Dashed</option>
                 </select>
             </SettingRow>
         </CustomizeSection>
         <CustomizeSection title="Grid">
-            <SettingRow label="Color">
+            <SettingRow label="Style">
+                <select value={customization.gridlines.style} onChange={e => handleCustomizationChange('gridlines', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs w-full">
+                    <option value="lines">Lines</option>
+                    <option value="dots">Dots</option>
+                </select>
+            </SettingRow>
+            <SettingRow label="Type">
+                <select value={customization.gridlines.type} onChange={e => handleCustomizationChange('gridlines', 'type', e.target.value)} className="bg-gray-200 rounded p-1 text-xs w-full">
+                    <option value="square">Square</option>
+                    <option value="columns">Columns & Rows</option>
+                </select>
+            </SettingRow>
+            {customization.gridlines.type === 'square' ? (
+                <SettingRow label="Density">
+                    <input type="range" min="2" max="100" step="1" value={customization.gridlines.density} onChange={e => handleCustomizationChange('gridlines', 'density', parseInt(e.target.value))} />
+                </SettingRow>
+            ) : (
+                <>
+                    <SettingRow label="Columns">
+                        <input type="range" min="1" max="100" step="1" value={customization.gridlines.columns} onChange={e => handleCustomizationChange('gridlines', 'columns', parseInt(e.target.value))} />
+                    </SettingRow>
+                    <SettingRow label="Rows">
+                        <input type="range" min="1" max="100" step="1" value={customization.gridlines.rows} onChange={e => handleCustomizationChange('gridlines', 'rows', parseInt(e.target.value))} />
+                    </SettingRow>
+                </>
+            )}
+             <SettingRow label="Color">
                  <ColorInput value={customization.gridlines.color} onChange={value => handleCustomizationChange('gridlines', 'color', value)} />
             </SettingRow>
              <SettingRow label="Width">
                 <input type="range" min="0.1" max="3" step="0.1" value={customization.gridlines.width} onChange={e => handleCustomizationChange('gridlines', 'width', parseFloat(e.target.value))} />
-            </SettingRow>
-            <SettingRow label="Style">
-                <select value={customization.gridlines.style} onChange={e => handleCustomizationChange('gridlines', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs">
-                    <option value="lines">Lines</option>
-                    <option value="dots">Dots</option>
-                </select>
             </SettingRow>
         </CustomizeSection>
         <CustomizeSection title="Element Guides">
@@ -278,7 +302,21 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <input type="range" min="0.1" max="3" step="0.1" value={customization.elementGuides.width} onChange={e => handleCustomizationChange('elementGuides', 'width', parseFloat(e.target.value))} />
             </SettingRow>
             <SettingRow label="Style">
-                <select value={customization.elementGuides.style} onChange={e => handleCustomizationChange('elementGuides', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs">
+                <select value={customization.elementGuides.style} onChange={e => handleCustomizationChange('elementGuides', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs w-full">
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                </select>
+            </SettingRow>
+        </CustomizeSection>
+        <CustomizeSection title="Alignment Guides">
+            <SettingRow label="Color">
+                 <ColorInput value={customization.alignmentGuides.color} onChange={value => handleCustomizationChange('alignmentGuides', 'color', value)} />
+            </SettingRow>
+             <SettingRow label="Width">
+                <input type="range" min="0.1" max="3" step="0.1" value={customization.alignmentGuides.width} onChange={e => handleCustomizationChange('alignmentGuides', 'width', parseFloat(e.target.value))} />
+            </SettingRow>
+            <SettingRow label="Style">
+                <select value={customization.alignmentGuides.style} onChange={e => handleCustomizationChange('alignmentGuides', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs w-full">
                     <option value="solid">Solid</option>
                     <option value="dashed">Dashed</option>
                 </select>

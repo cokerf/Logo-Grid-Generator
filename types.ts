@@ -1,3 +1,4 @@
+
 export interface Point {
   x: number;
   y: number;
@@ -56,8 +57,17 @@ export interface CustomizationOptions {
     color: string;
     width: number;
     style: 'lines' | 'dots';
+    type: 'square' | 'columns';
+    density: number;
+    columns: number;
+    rows: number;
   };
   elementGuides: {
+    color: string;
+    width: number;
+    style: 'solid' | 'dashed';
+  };
+  alignmentGuides: {
     color: string;
     width: number;
     style: 'solid' | 'dashed';

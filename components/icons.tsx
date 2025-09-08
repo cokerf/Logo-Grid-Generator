@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const LogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -57,6 +58,16 @@ export const ElementGuidesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props
       <path d="M17 12H22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2"/>
     </svg>
   );
+
+export const AlignmentIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg {...props} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 6H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M4 12H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M4 18H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M8 3V21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2" />
+        <path d="M16 3V21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2" />
+    </svg>
+);
 
 export const CustomizeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg {...props} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -118,14 +129,14 @@ export const UnlockIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 
 export const UndoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="9 14 4 9 9 4"></polyline>
-        <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+        <path d="M9 14 4 9l5-5"/>
+        <path d="M4 9h12a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H9"/>
     </svg>
 );
-  
+
 export const RedoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="15 14 20 9 15 4"></polyline>
-        <path d="M4 20v-7a4 4 0 0 1 4-4h12"></path>
+        <path d="m15 14 5-5-5-5"/>
+        <path d="M20 9H8a5 5 0 0 0-5 5v0a5 5 0 0 0 5 5h7"/>
     </svg>
 );
