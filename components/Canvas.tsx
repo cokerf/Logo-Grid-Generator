@@ -1,5 +1,5 @@
 import React, { useState, MouseEvent, useMemo } from 'react';
-import type { ParsedSVG, Point, Handle, CustomizationOptions } from '../types';
+import type { ParsedSVG, Point, Handle, CustomizationOptions, SVGPathData } from '../types';
 
 interface CanvasProps {
   svgData: ParsedSVG | null;
@@ -8,6 +8,7 @@ interface CanvasProps {
   showHandles: boolean;
   showOutlines: boolean;
   showGridlines: boolean;
+  showElementGuides: boolean;
   error: string | null;
   customization: CustomizationOptions;
   onHandleMove: (pathIndex: number, handleIndex: number, newPosition: Point) => void;
@@ -112,9 +113,45 @@ const Outlines: React.FC<{ path: { boundingBox: SVGRect | null }, options: Custo
     );
 };
 
+const ElementGuides: React.FC<{
+  path: SVGPathData;
+  viewBox: { x: number; y: number; width: number; height: number };
+  options: CustomizationOptions['elementGuides'];
+}> = ({ path, viewBox, options }) => {
+  if (!path.boundingBox) return null;
+  const { x, y, width, height } = path.boundingBox;
+
+  const midX = x + width / 2;
+  const midY = y + height / 2;
+  
+  const commonProps = {
+    stroke: options.color,
+    strokeWidth: options.width,
+    strokeDasharray: options.style === 'dashed' ? '4 2' : 'none',
+  };
+
+  return (
+    <g id="element-guides">
+      {/* Vertical lines */}
+      <line x1={x} y1={viewBox.y} x2={x} y2={viewBox.y + viewBox.height} {...commonProps} />
+      <line x1={midX} y1={viewBox.y} x2={midX} y2={viewBox.y + viewBox.height} {...commonProps} />
+      <line x1={x + width} y1={viewBox.y} x2={x + width} y2={viewBox.y + viewBox.height} {...commonProps} />
+      
+      {/* Horizontal lines */}
+      <line x1={viewBox.x} y1={y} x2={viewBox.x + viewBox.width} y2={y} {...commonProps} />
+      <line x1={viewBox.x} y1={midY} x2={viewBox.x + viewBox.width} y2={midY} {...commonProps} />
+      <line x1={viewBox.x} y1={y + height} x2={viewBox.x + viewBox.width} y2={y + height} {...commonProps} />
+
+      {/* Diagonal lines */}
+      <line x1={x} y1={y} x2={x + width} y2={y + height} {...commonProps} />
+      <line x1={x + width} y1={y} x2={x} y2={y + height} {...commonProps} />
+    </g>
+  );
+};
+
 
 export const Canvas: React.FC<CanvasProps> = ({ 
-  svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, error, customization, 
+  svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, showElementGuides, error, customization, 
   onHandleMove, onPathMove, snapToGrid, selectedPathIndex, setSelectedPathIndex, onDragStart, onDragEnd 
 }) => {
   const [dragState, setDragState] = useState<{ type: 'handle' | 'path', index: number, pathIndex: number, startPoint: Point } | null>(null);
@@ -122,6 +159,12 @@ export const Canvas: React.FC<CanvasProps> = ({
   const gridStep = useMemo(() => {
     if (!svgData) return 1;
     return Math.min(svgData.width, svgData.height) / 20;
+  }, [svgData]);
+
+  const viewBox = useMemo(() => {
+    if (!svgData) return { x: 0, y: 0, width: 0, height: 0 };
+    const parts = svgData.viewBox.split(' ').map(parseFloat);
+    return { x: parts[0] || 0, y: parts[1] || 0, width: parts[2] || 0, height: parts[3] || 0 };
   }, [svgData]);
 
   const getSVGPoint = (e: MouseEvent): Point => {
@@ -224,6 +267,14 @@ export const Canvas: React.FC<CanvasProps> = ({
         preserveAspectRatio="xMidYMid meet"
       >
         {showGridlines && <Grid width={svgData.width} height={svgData.height} options={customization.gridlines} />}
+        
+        {showElementGuides && selectedPathIndex !== null && svgData.paths[selectedPathIndex] && (
+          <ElementGuides 
+            path={svgData.paths[selectedPathIndex]} 
+            viewBox={viewBox}
+            options={customization.elementGuides} 
+          />
+        )}
 
         {svgData.paths.map((path, i) => {
             const isSelected = i === selectedPathIndex;

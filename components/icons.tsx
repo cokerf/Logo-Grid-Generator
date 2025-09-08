@@ -37,7 +37,7 @@ export const OutlinesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
   </svg>
 );
 
-export const GridlinesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+export const CanvasGridIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg {...props} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M5 3V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
     <path d="M12 3V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -47,6 +47,16 @@ export const GridlinesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) =>
     <path d="M3 19H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
   </svg>
 );
+
+export const ElementGuidesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg {...props} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="7" y="7" width="10" height="10" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M12 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2"/>
+      <path d="M12 17V22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2"/>
+      <path d="M2 12H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2"/>
+      <path d="M17 12H22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2"/>
+    </svg>
+  );
 
 export const CustomizeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg {...props} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

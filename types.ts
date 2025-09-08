@@ -57,5 +57,10 @@ export interface CustomizationOptions {
     width: number;
     style: 'lines' | 'dots';
   };
+  elementGuides: {
+    color: string;
+    width: number;
+    style: 'solid' | 'dashed';
+  };
   canvasBackground: string;
 }

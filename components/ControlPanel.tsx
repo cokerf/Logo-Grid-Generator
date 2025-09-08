@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { AnchorIcon, HandlesIcon, OutlinesIcon, GridlinesIcon, CustomizeIcon, PreferencesIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon, UndoIcon, RedoIcon } from './icons';
+import { AnchorIcon, HandlesIcon, OutlinesIcon, CanvasGridIcon, ElementGuidesIcon, CustomizeIcon, PreferencesIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon, UndoIcon, RedoIcon } from './icons';
 import type { CustomizationOptions, ParsedSVG } from '../types';
 import { ColorInput } from './ColorInput';
 
@@ -12,6 +12,8 @@ interface ControlPanelProps {
   setShowOutlines: (value: boolean) => void;
   showGridlines: boolean;
   setShowGridlines: (value: boolean) => void;
+  showElementGuides: boolean;
+  setShowElementGuides: (value: boolean) => void;
   onGenerateAll: () => void;
   hasSVG: boolean;
   svgData: ParsedSVG | null;
@@ -37,12 +39,13 @@ const ToggleButton: React.FC<{
   label: string;
   isActive: boolean;
   onClick: () => void;
-}> = ({ Icon, label, isActive, onClick }) => (
+  className?: string;
+}> = ({ Icon, label, isActive, onClick, className = '' }) => (
   <button
     onClick={onClick}
-    className={`flex flex-1 flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors duration-200 ${
+    className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors duration-200 ${
       isActive ? 'bg-gray-300' : 'bg-gray-100 hover:bg-gray-200'
-    }`}
+    } ${className}`}
     aria-label={`Toggle ${label}`}
     aria-pressed={isActive}
   >
@@ -93,6 +96,7 @@ const CustomizeSection: React.FC<{title: string, children: React.ReactNode}> = (
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   showAnchors, setShowAnchors, showHandles, setShowHandles,
   showOutlines, setShowOutlines, showGridlines, setShowGridlines,
+  showElementGuides, setShowElementGuides,
   onGenerateAll, hasSVG, svgData, customization, setCustomization, 
   openPanel, setOpenPanel, onFileUpload, onExportSVG, onExportPNG,
   snapToGrid, setSnapToGrid, exportDimensions, setExportDimensions,
@@ -190,7 +194,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <ToggleButton Icon={AnchorIcon} label="Anchors" isActive={showAnchors} onClick={() => setShowAnchors(!showAnchors)} />
         <ToggleButton Icon={HandlesIcon} label="Handles" isActive={showHandles} onClick={() => setShowHandles(!showHandles)} />
         <ToggleButton Icon={OutlinesIcon} label="Outlines" isActive={showOutlines} onClick={() => setShowOutlines(!showOutlines)} />
-        <ToggleButton Icon={GridlinesIcon} label="Gridlines" isActive={showGridlines} onClick={() => setShowGridlines(!showGridlines)} />
+        <ToggleButton Icon={CanvasGridIcon} label="Grid" isActive={showGridlines} onClick={() => setShowGridlines(!showGridlines)} />
+        <ToggleButton Icon={ElementGuidesIcon} label="Guides" isActive={showElementGuides} onClick={() => setShowElementGuides(!showElementGuides)} className="col-span-2" />
       </div>
 
       <CollapsiblePanel
@@ -251,7 +256,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 </select>
             </SettingRow>
         </CustomizeSection>
-        <CustomizeSection title="Gridlines">
+        <CustomizeSection title="Grid">
             <SettingRow label="Color">
                  <ColorInput value={customization.gridlines.color} onChange={value => handleCustomizationChange('gridlines', 'color', value)} />
             </SettingRow>
@@ -262,6 +267,20 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <select value={customization.gridlines.style} onChange={e => handleCustomizationChange('gridlines', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs">
                     <option value="lines">Lines</option>
                     <option value="dots">Dots</option>
+                </select>
+            </SettingRow>
+        </CustomizeSection>
+        <CustomizeSection title="Element Guides">
+            <SettingRow label="Color">
+                 <ColorInput value={customization.elementGuides.color} onChange={value => handleCustomizationChange('elementGuides', 'color', value)} />
+            </SettingRow>
+             <SettingRow label="Width">
+                <input type="range" min="0.1" max="3" step="0.1" value={customization.elementGuides.width} onChange={e => handleCustomizationChange('elementGuides', 'width', parseFloat(e.target.value))} />
+            </SettingRow>
+            <SettingRow label="Style">
+                <select value={customization.elementGuides.style} onChange={e => handleCustomizationChange('elementGuides', 'style', e.target.value)} className="bg-gray-200 rounded p-1 text-xs">
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
                 </select>
             </SettingRow>
         </CustomizeSection>

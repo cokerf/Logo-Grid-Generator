@@ -14,6 +14,7 @@ const initialCustomization: CustomizationOptions = {
   handles: { color: '#888888FF', width: 1 },
   outlines: { color: '#000000FF', width: 1, style: 'dashed' },
   gridlines: { color: '#ccccccFF', width: 0.5, style: 'lines' },
+  elementGuides: { color: '#007aff80', width: 0.5, style: 'dashed' },
   canvasBackground: '#f9fafbFF',
 };
 
@@ -34,6 +35,7 @@ export default function App(): JSX.Element {
   const [showHandles, setShowHandles] = useState<boolean>(false);
   const [showOutlines, setShowOutlines] = useState<boolean>(false);
   const [showGridlines, setShowGridlines] = useState<boolean>(true);
+  const [showElementGuides, setShowElementGuides] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [openPanel, setOpenPanel] = useState<string | null>(null);
   const [customization, setCustomization] = useState<CustomizationOptions>(initialCustomization);
@@ -76,11 +78,13 @@ export default function App(): JSX.Element {
 
 
   const generateAll = useCallback(() => {
-    setShowAnchors(true);
-    setShowHandles(true);
-    setShowOutlines(true);
-    setShowGridlines(true);
-  }, []);
+    const areAllOn = showAnchors && showHandles && showOutlines && showGridlines && showElementGuides;
+    setShowAnchors(!areAllOn);
+    setShowHandles(!areAllOn);
+    setShowOutlines(!areAllOn);
+    setShowGridlines(!areAllOn);
+    setShowElementGuides(!areAllOn);
+  }, [showAnchors, showHandles, showOutlines, showGridlines, showElementGuides]);
 
   // Effect to add bounding boxes after parsing
   useEffect(() => {
@@ -251,6 +255,12 @@ export default function App(): JSX.Element {
         svgElement.insertBefore(backgroundRect, svgElement.firstChild);
     }
     
+    // Remove guides from export
+    const guides = svgElement.querySelector('#element-guides');
+    if (guides) {
+        guides.remove();
+    }
+
     const svgString = new XMLSerializer().serializeToString(svgElement);
     const blob = new Blob([svgString], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
@@ -282,6 +292,12 @@ export default function App(): JSX.Element {
     svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     svgElement.setAttribute('width', String(width));
     svgElement.setAttribute('height', String(height));
+
+    // Remove guides from export
+    const guides = svgElement.querySelector('#element-guides');
+    if (guides) {
+        guides.remove();
+    }
     
     const svgString = new XMLSerializer().serializeToString(svgElement);
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
@@ -320,6 +336,8 @@ export default function App(): JSX.Element {
         setShowOutlines={setShowOutlines}
         showGridlines={showGridlines}
         setShowGridlines={setShowGridlines}
+        showElementGuides={showElementGuides}
+        setShowElementGuides={setShowElementGuides}
         onGenerateAll={generateAll}
         hasSVG={!!displayedSvgData}
         svgData={displayedSvgData}
@@ -347,6 +365,7 @@ export default function App(): JSX.Element {
           showHandles={showHandles}
           showOutlines={showOutlines}
           showGridlines={showGridlines}
+          showElementGuides={showElementGuides}
           error={error}
           customization={customization}
           onHandleMove={handleHandleMove}
