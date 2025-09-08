@@ -32,6 +32,12 @@ export interface ParsedSVG {
   paths: SVGPathData[];
 }
 
+export interface Guide {
+  id: string;
+  orientation: 'horizontal' | 'vertical';
+  position: number;
+}
+
 export interface CustomizationOptions {
   showFill: boolean;
   fillColor: string;
@@ -71,6 +77,13 @@ export interface CustomizationOptions {
     color: string;
     width: number;
     style: 'solid' | 'dashed';
+  };
+  rulers: {
+    background: string;
+    text: string;
+  };
+  guides: {
+    color: string;
   };
   canvasBackground: string;
 }

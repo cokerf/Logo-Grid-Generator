@@ -1,5 +1,6 @@
+
 import React, { useRef, useState, useEffect } from 'react';
-import { AnchorIcon, HandlesIcon, OutlinesIcon, CanvasGridIcon, ElementGuidesIcon, AlignmentIcon, CustomizeIcon, PreferencesIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon, UndoIcon, RedoIcon } from './icons';
+import { AnchorIcon, HandlesIcon, OutlinesIcon, CanvasGridIcon, ElementGuidesIcon, AlignmentIcon, RulerIcon, CustomizeIcon, PreferencesIcon, UploadIcon, ExportIcon, LockIcon, UnlockIcon, UndoIcon, RedoIcon } from './icons';
 import type { CustomizationOptions, ParsedSVG } from '../types';
 import { ColorInput } from './ColorInput';
 
@@ -16,6 +17,8 @@ interface ControlPanelProps {
   setShowElementGuides: (value: boolean) => void;
   showAlignmentGuides: boolean;
   setShowAlignmentGuides: (value: boolean) => void;
+  showRulers: boolean;
+  setShowRulers: (value: boolean) => void;
   hasSVG: boolean;
   svgData: ParsedSVG | null;
   customization: CustomizationOptions;
@@ -127,6 +130,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   showAnchors, setShowAnchors, showHandles, setShowHandles,
   showOutlines, setShowOutlines, showGridlines, setShowGridlines,
   showElementGuides, setShowElementGuides, showAlignmentGuides, setShowAlignmentGuides,
+  showRulers, setShowRulers,
   hasSVG, svgData, customization, setCustomization, 
   openPanel, setOpenPanel, onUploadClick, onExportSVG, onExportPNG,
   snapToGrid, setSnapToGrid, exportDimensions, setExportDimensions,
@@ -206,6 +210,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <ToggleButton Icon={CanvasGridIcon} label="Grid" isActive={showGridlines} onClick={() => setShowGridlines(!showGridlines)} />
         <ToggleButton Icon={ElementGuidesIcon} label="Guides" isActive={showElementGuides} onClick={() => setShowElementGuides(!showElementGuides)} />
         <ToggleButton Icon={AlignmentIcon} label="Alignment" isActive={showAlignmentGuides} onClick={() => setShowAlignmentGuides(!showAlignmentGuides)} />
+        <ToggleButton Icon={RulerIcon} label="Rulers" isActive={showRulers} onClick={() => setShowRulers(!showRulers)} />
       </div>
 
       <CollapsiblePanel
@@ -298,6 +303,17 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </SettingRow>
              <SettingRow label="Width">
                 <input type="range" min="0.1" max="3" step="0.1" value={customization.gridlines.width} onChange={e => handleCustomizationChange('gridlines', 'width', parseFloat(e.target.value))} />
+            </SettingRow>
+        </CustomizeSection>
+        <CustomizeSection title="Rulers & Guides">
+            <SettingRow label="Ruler BG">
+                <ColorInput value={customization.rulers.background} onChange={value => handleCustomizationChange('rulers', 'background', value)} />
+            </SettingRow>
+            <SettingRow label="Ruler Text">
+                <ColorInput value={customization.rulers.text} onChange={value => handleCustomizationChange('rulers', 'text', value)} />
+            </SettingRow>
+            <SettingRow label="Guide Color">
+                <ColorInput value={customization.guides.color} onChange={value => handleCustomizationChange('guides', 'color', value)} />
             </SettingRow>
         </CustomizeSection>
         <CustomizeSection title="Element Guides">

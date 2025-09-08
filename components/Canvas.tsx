@@ -1,5 +1,6 @@
-import React, { useState, MouseEvent, useMemo, DragEvent } from 'react';
-import type { ParsedSVG, Point, Handle, CustomizationOptions, SVGPathData } from '../types';
+
+import React, { useState, MouseEvent, useMemo, DragEvent, useRef, useLayoutEffect } from 'react';
+import type { ParsedSVG, Point, Handle, CustomizationOptions, SVGPathData, Guide } from '../types';
 
 interface CanvasProps {
   svgData: ParsedSVG | null;
@@ -10,6 +11,11 @@ interface CanvasProps {
   showGridlines: boolean;
   showElementGuides: boolean;
   showAlignmentGuides: boolean;
+  showRulers: boolean;
+  guides: Guide[];
+  onAddGuide: (orientation: 'horizontal' | 'vertical', position: number) => void;
+  onUpdateGuide: (id: string, position: number) => void;
+  onRemoveGuide: (id: string) => void;
   error: string | null;
   customization: CustomizationOptions;
   onHandleMove: (pathIndex: number, handleIndex: number, newPosition: Point) => void;
@@ -24,6 +30,14 @@ interface CanvasProps {
   isDraggingOver: boolean;
   setIsDraggingOver: (isDragging: boolean) => void;
 }
+
+type DragState = 
+  | { type: 'handle'; index: number; pathIndex: number; startPoint: Point }
+  | { type: 'path'; index: number; pathIndex: number; startPoint: Point }
+  | { type: 'guide'; id: string; orientation: 'horizontal' | 'vertical'; startPoint: Point }
+  | { type: 'new-guide'; orientation: 'horizontal' | 'vertical'; id: string | null };
+
+const RULER_SIZE = 24; // in pixels
 
 const Grid: React.FC<{ viewBox: {x:number, y:number, width: number, height: number}, options: CustomizationOptions['gridlines'] }> = ({ viewBox, options }) => {
     const items = [];
@@ -214,13 +228,15 @@ const AlignmentGuides: React.FC<{
   return <g id="alignment-guides">{guides}</g>;
 };
 
-
 export const Canvas: React.FC<CanvasProps> = ({ 
-  svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, showElementGuides, showAlignmentGuides, error, customization, 
+  svgData, svgRef, showAnchors, showHandles, showOutlines, showGridlines, showElementGuides, showAlignmentGuides, showRulers,
+  guides, onAddGuide, onUpdateGuide, onRemoveGuide,
+  error, customization, 
   onHandleMove, onPathMove, snapToGrid, selectedPathIndex, setSelectedPathIndex, onDragStart, onDragEnd,
   onFileUpload, onUploadClick, isDraggingOver, setIsDraggingOver
 }) => {
-  const [dragState, setDragState] = useState<{ type: 'handle' | 'path', index: number, pathIndex: number, startPoint: Point } | null>(null);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
   const viewBox = useMemo(() => {
     if (!svgData) return { x: 0, y: 0, width: 0, height: 0 };
@@ -230,7 +246,6 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const gridStep = useMemo(() => {
     if (!svgData) return 1;
-    // Snap to the custom grid if it's column/row based
     if(showGridlines && customization.gridlines.type === 'columns') {
        return Math.min(viewBox.width / customization.gridlines.columns, viewBox.height / customization.gridlines.rows);
     }
@@ -261,10 +276,29 @@ export const Canvas: React.FC<CanvasProps> = ({
     onDragStart();
   };
 
+  const handleGuideMouseDown = (e: MouseEvent, id: string, orientation: 'horizontal' | 'vertical') => {
+    e.stopPropagation();
+    setDragState({ type: 'guide', id, orientation, startPoint: getSVGPoint(e) });
+  };
+
+  const handleRulerMouseDown = (e: MouseEvent, orientation: 'horizontal' | 'vertical') => {
+    e.stopPropagation();
+    setDragState({ type: 'new-guide', orientation, id: null });
+  };
+
   const handleMouseMove = (e: MouseEvent) => {
     if (!dragState) return;
-
+    
     const currentPoint = getSVGPoint(e);
+
+    if (dragState.type === 'new-guide') {
+      const newId = Date.now().toString();
+      const pos = dragState.orientation === 'horizontal' ? currentPoint.y : currentPoint.x;
+      onAddGuide(dragState.orientation, pos);
+      setDragState({ type: 'guide', id: newId, orientation: dragState.orientation, startPoint: currentPoint });
+      return;
+    }
+    
     let newPos = { ...currentPoint };
 
     if (dragState.type === 'handle') {
@@ -275,12 +309,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     } 
     
     if (dragState.type === 'path') {
-      const delta = {
-        x: currentPoint.x - dragState.startPoint.x,
-        y: currentPoint.y - dragState.startPoint.y
-      };
-
-      // Apply snapping to the delta
+      const delta = { x: currentPoint.x - dragState.startPoint.x, y: currentPoint.y - dragState.startPoint.y };
       if (snapToGrid) {
         const snappedStart = { x: snap(dragState.startPoint.x, viewBox.x), y: snap(dragState.startPoint.y, viewBox.y) };
         const snappedCurrent = { x: snap(currentPoint.x, viewBox.x), y: snap(currentPoint.y, viewBox.y) };
@@ -288,17 +317,46 @@ export const Canvas: React.FC<CanvasProps> = ({
         delta.y = snappedCurrent.y - snappedStart.y;
         if(Math.abs(delta.x) > 0 || Math.abs(delta.y) > 0) {
             onPathMove(dragState.pathIndex, delta);
-            setDragState({ ...dragState, startPoint: currentPoint }); // Update start point to prevent cumulative snapping errors
+            setDragState({ ...dragState, startPoint: currentPoint }); 
         }
       } else {
         onPathMove(dragState.pathIndex, delta);
         setDragState({ ...dragState, startPoint: currentPoint });
       }
     }
+
+    if (dragState.type === 'guide') {
+      const svg = svgRef.current;
+      const wrapper = canvasWrapperRef.current;
+      if (!svg || !wrapper) return;
+      
+      const svgRect = svg.getBoundingClientRect();
+      const wrapperRect = wrapper.getBoundingClientRect();
+      
+      if (dragState.orientation === 'horizontal') {
+        if (e.clientY < (wrapperRect.top + RULER_SIZE) || e.clientY > wrapperRect.bottom) {
+          onRemoveGuide(dragState.id);
+          setDragState(null);
+          return;
+        }
+        let pos = currentPoint.y;
+        if (snapToGrid) pos = snap(pos, viewBox.y);
+        onUpdateGuide(dragState.id, pos);
+      } else { // vertical
+        if (e.clientX < (wrapperRect.left + RULER_SIZE) || e.clientX > wrapperRect.right) {
+          onRemoveGuide(dragState.id);
+          setDragState(null);
+          return;
+        }
+        let pos = currentPoint.x;
+        if (snapToGrid) pos = snap(pos, viewBox.x);
+        onUpdateGuide(dragState.id, pos);
+      }
+    }
   };
 
   const handleMouseUp = () => {
-    if (dragState) {
+    if (dragState && (dragState.type === 'path' || dragState.type === 'handle')) {
       onDragEnd();
     }
     setDragState(null);
@@ -360,52 +418,230 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   return (
     <div 
+      ref={canvasWrapperRef}
+      className="w-full h-full relative" 
+      style={{backgroundColor: customization.canvasBackground}}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      {showRulers && <Rulers svgRef={svgRef} viewBox={viewBox} options={customization.rulers} onRulerMouseDown={handleRulerMouseDown} />}
+      
+      <div 
         className="w-full h-full p-4 flex items-center justify-center" 
-        style={{backgroundColor: customization.canvasBackground}}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        style={{
+            paddingTop: showRulers ? RULER_SIZE : 16,
+            paddingLeft: showRulers ? RULER_SIZE : 16,
+        }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-    >
-      <svg
-        ref={svgRef}
-        viewBox={svgData.viewBox}
-        className="max-w-full max-h-full"
-        preserveAspectRatio="xMidYMid meet"
       >
-        {showGridlines && <Grid viewBox={viewBox} options={customization.gridlines} />}
-        {showAlignmentGuides && svgData && <AlignmentGuides paths={svgData.paths} viewBox={viewBox} options={customization.alignmentGuides} />}
+        <svg
+          ref={svgRef}
+          viewBox={svgData.viewBox}
+          className="max-w-full max-h-full"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {showGridlines && <Grid viewBox={viewBox} options={customization.gridlines} />}
+          {showAlignmentGuides && svgData && <AlignmentGuides paths={svgData.paths} viewBox={viewBox} options={customization.alignmentGuides} />}
 
-        {showElementGuides && selectedPathIndex !== null && svgData.paths[selectedPathIndex] && (
-          <ElementGuides 
-            path={svgData.paths[selectedPathIndex]} 
-            viewBox={viewBox}
-            options={customization.elementGuides} 
-          />
-        )}
+          {showElementGuides && selectedPathIndex !== null && svgData.paths[selectedPathIndex] && (
+            <ElementGuides 
+              path={svgData.paths[selectedPathIndex]} 
+              viewBox={viewBox}
+              options={customization.elementGuides} 
+            />
+          )}
 
-        {svgData.paths.map((path, i) => {
-            const isSelected = i === selectedPathIndex;
-            const fillColor = customization.showFill ? customization.fillColor : 'none';
-            return (
-                <g key={i}>
-                    <path 
-                      d={path.d} 
-                      fill={fillColor} 
-                      stroke={isSelected ? '#007AFF' : customization.path.stroke} 
-                      strokeWidth={isSelected ? customization.path.strokeWidth * 1.5 : customization.path.strokeWidth}
-                      onMouseDown={(e) => handleMouseDown(e, 'path', i, i)}
-                      style={{ cursor: 'move' }}
-                    />
-                    {showOutlines && <Outlines path={path} options={customization.outlines} isSelected={isSelected} />}
-                    {showAnchors && <Anchors points={path.points} options={customization.anchors} />}
-                    {showHandles && path.handles.length > 0 && <Handles pathIndex={i} handles={path.handles} options={customization.handles} anchorOptions={customization.anchors} onMouseDown={(e, pIdx, hIdx) => handleMouseDown(e, 'handle', pIdx, hIdx)} />}
-                </g>
-            )
-        })}
-      </svg>
+          {svgData.paths.map((path, i) => {
+              const isSelected = i === selectedPathIndex;
+              const fillColor = customization.showFill ? customization.fillColor : 'none';
+              return (
+                  <g key={i}>
+                      <path 
+                        d={path.d} 
+                        fill={fillColor} 
+                        stroke={isSelected ? '#007AFF' : customization.path.stroke} 
+                        strokeWidth={isSelected ? customization.path.strokeWidth * 1.5 : customization.path.strokeWidth}
+                        onMouseDown={(e) => handleMouseDown(e, 'path', i, i)}
+                        style={{ cursor: 'move' }}
+                      />
+                      {showOutlines && <Outlines path={path} options={customization.outlines} isSelected={isSelected} />}
+                      {showAnchors && <Anchors points={path.points} options={customization.anchors} />}
+                      {showHandles && path.handles.length > 0 && <Handles pathIndex={i} handles={path.handles} options={customization.handles} anchorOptions={customization.anchors} onMouseDown={(e, pIdx, hIdx) => handleMouseDown(e, 'handle', pIdx, hIdx)} />}
+                  </g>
+              )
+          })}
+        </svg>
+      </div>
+      {guides.length > 0 && <Guides svgRef={svgRef} viewBox={viewBox} guides={guides} options={customization.guides} onGuideMouseDown={handleGuideMouseDown} />}
     </div>
   );
+};
+
+// --- Rulers and Guides Components ---
+
+const Rulers: React.FC<{
+  svgRef: React.RefObject<SVGSVGElement>;
+  viewBox: { x: number; y: number; width: number; height: number };
+  options: CustomizationOptions['rulers'];
+  onRulerMouseDown: (e: MouseEvent, orientation: 'horizontal' | 'vertical') => void;
+}> = ({ svgRef, viewBox, options, onRulerMouseDown }) => {
+  const hRulerRef = useRef<HTMLCanvasElement>(null);
+  const vRulerRef = useRef<HTMLCanvasElement>(null);
+
+  useLayoutEffect(() => {
+    const drawRulers = () => {
+      const hCanvas = hRulerRef.current;
+      const vCanvas = vRulerRef.current;
+      const svg = svgRef.current;
+      if (!hCanvas || !vCanvas || !svg) return;
+      
+      const hCtx = hCanvas.getContext('2d');
+      const vCtx = vCanvas.getContext('2d');
+      if (!hCtx || !vCtx) return;
+
+      const svgRect = svg.getBoundingClientRect();
+      const parentRect = svg.parentElement!.getBoundingClientRect();
+      
+      const dpr = window.devicePixelRatio || 1;
+      hCanvas.width = parentRect.width * dpr;
+      hCanvas.height = RULER_SIZE * dpr;
+      vCanvas.width = RULER_SIZE * dpr;
+      vCanvas.height = parentRect.height * dpr;
+      
+      hCtx.scale(dpr, dpr);
+      vCtx.scale(dpr, dpr);
+
+      const svgLeft = svgRect.left - parentRect.left;
+      const svgTop = svgRect.top - parentRect.top;
+      const scaleX = svgRect.width / viewBox.width;
+      const scaleY = svgRect.height / viewBox.height;
+
+      // Clear rulers
+      hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
+      vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
+
+      // Draw ruler backgrounds
+      hCtx.fillStyle = options.background;
+      hCtx.fillRect(0, 0, hCanvas.width, RULER_SIZE);
+      vCtx.fillStyle = options.background;
+      vCtx.fillRect(0, 0, RULER_SIZE, vCanvas.height);
+
+      hCtx.fillStyle = options.text;
+      vCtx.fillStyle = options.text;
+      hCtx.strokeStyle = options.text;
+      vCtx.strokeStyle = options.text;
+      hCtx.font = '10px Archivo';
+      vCtx.font = '10px Archivo';
+
+      const minTickSpacing = 50; // min pixels between major ticks
+      const majorTickInterval = Math.pow(10, Math.ceil(Math.log10(minTickSpacing / Math.min(scaleX, scaleY))));
+      
+      // Horizontal Ruler
+      for (let i = Math.floor(viewBox.x / majorTickInterval) * majorTickInterval; i < viewBox.x + viewBox.width; i += majorTickInterval / 10) {
+        const xPos = svgLeft + (i - viewBox.x) * scaleX;
+        const isMajor = Math.round(i * 100) % Math.round(majorTickInterval * 100) === 0;
+        const tickHeight = isMajor ? 8 : 4;
+        hCtx.beginPath();
+        hCtx.moveTo(xPos, RULER_SIZE);
+        hCtx.lineTo(xPos, RULER_SIZE - tickHeight);
+        hCtx.stroke();
+        if (isMajor) {
+          hCtx.fillText(String(Math.round(i)), xPos + 2, 12);
+        }
+      }
+
+      // Vertical Ruler
+      for (let i = Math.floor(viewBox.y / majorTickInterval) * majorTickInterval; i < viewBox.y + viewBox.height; i += majorTickInterval / 10) {
+        const yPos = svgTop + (i - viewBox.y) * scaleY;
+        const isMajor = Math.round(i * 100) % Math.round(majorTickInterval * 100) === 0;
+        const tickWidth = isMajor ? 8 : 4;
+        vCtx.beginPath();
+        vCtx.moveTo(RULER_SIZE, yPos);
+        vCtx.lineTo(RULER_SIZE - tickWidth, yPos);
+        vCtx.stroke();
+        if (isMajor) {
+          vCtx.save();
+          vCtx.translate(12, yPos - 2);
+          vCtx.rotate(-Math.PI / 2);
+          vCtx.fillText(String(Math.round(i)), 0, 0);
+          vCtx.restore();
+        }
+      }
+    };
+    
+    drawRulers();
+    const resizeObserver = new ResizeObserver(drawRulers);
+    if(svgRef.current?.parentElement) {
+      resizeObserver.observe(svgRef.current.parentElement);
+    }
+    return () => resizeObserver.disconnect();
+  }, [svgRef, viewBox, options]);
+
+  return <>
+    {/* FIX: Pass the React.MouseEvent directly instead of e.nativeEvent to match the expected event type. */}
+    <canvas ref={hRulerRef} style={{ position: 'absolute', top: 0, left: RULER_SIZE, width: `calc(100% - ${RULER_SIZE}px)`, height: RULER_SIZE, cursor: 'ns-resize' }} onMouseDown={(e) => onRulerMouseDown(e, 'horizontal')} />
+    {/* FIX: Pass the React.MouseEvent directly instead of e.nativeEvent to match the expected event type. */}
+    <canvas ref={vRulerRef} style={{ position: 'absolute', top: RULER_SIZE, left: 0, width: RULER_SIZE, height: `calc(100% - ${RULER_SIZE}px)`, cursor: 'ew-resize' }} onMouseDown={(e) => onRulerMouseDown(e, 'vertical')} />
+    <div style={{ position: 'absolute', top: 0, left: 0, width: RULER_SIZE, height: RULER_SIZE, background: options.background, borderRight: `1px solid ${options.text}40`, borderBottom: `1px solid ${options.text}40` }} />
+  </>;
+};
+
+const Guides: React.FC<{
+  svgRef: React.RefObject<SVGSVGElement>;
+  viewBox: { x: number; y: number; width: number; height: number };
+  guides: Guide[];
+  options: CustomizationOptions['guides'];
+  onGuideMouseDown: (e: MouseEvent, id: string, orientation: 'horizontal' | 'vertical') => void;
+}> = ({ svgRef, viewBox, guides, options, onGuideMouseDown }) => {
+    const [transform, setTransform] = useState({ scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 });
+
+    useLayoutEffect(() => {
+        const updateTransform = () => {
+            if (!svgRef.current || !svgRef.current.parentElement) return;
+            const svg = svgRef.current;
+            const parent = svg.parentElement;
+            const svgRect = svg.getBoundingClientRect();
+            const parentRect = parent.getBoundingClientRect();
+            setTransform({
+                scaleX: svgRect.width / viewBox.width,
+                scaleY: svgRect.height / viewBox.height,
+                offsetX: svgRect.left - parentRect.left,
+                offsetY: svgRect.top - parentRect.top,
+            });
+        };
+        updateTransform();
+        const resizeObserver = new ResizeObserver(updateTransform);
+        if(svgRef.current?.parentElement) {
+          resizeObserver.observe(svgRef.current.parentElement);
+        }
+        return () => resizeObserver.disconnect();
+    }, [svgRef, viewBox]);
+
+    return <>
+        {guides.map(guide => {
+            const style: React.CSSProperties = {
+                position: 'absolute',
+                backgroundColor: options.color,
+                zIndex: 10,
+            };
+            if (guide.orientation === 'horizontal') {
+                style.top = (guide.position - viewBox.y) * transform.scaleY + transform.offsetY;
+                style.left = RULER_SIZE;
+                style.width = `calc(100% - ${RULER_SIZE}px)`;
+                style.height = 1;
+                style.cursor = 'ns-resize';
+            } else {
+                style.left = (guide.position - viewBox.x) * transform.scaleX + transform.offsetX;
+                style.top = RULER_SIZE;
+                style.height = `calc(100% - ${RULER_SIZE}px)`;
+                style.width = 1;
+                style.cursor = 'ew-resize';
+            }
+            // FIX: Pass the React.MouseEvent directly instead of e.nativeEvent to match the expected event type.
+            return <div key={guide.id} style={style} onMouseDown={(e) => onGuideMouseDown(e, guide.id, guide.orientation)} />;
+        })}
+    </>;
 };

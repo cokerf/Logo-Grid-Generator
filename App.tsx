@@ -1,7 +1,8 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ControlPanel } from './components/ControlPanel';
 import { Canvas } from './components/Canvas';
-import type { ParsedSVG, CustomizationOptions, Point, PathSegment } from './types';
+import type { ParsedSVG, CustomizationOptions, Point, PathSegment, Guide } from './types';
 import { parseSVG, segmentsToD, parsePathD } from './services/svgParser';
 import { useHistoryState } from './hooks/useHistoryState';
 
@@ -15,6 +16,8 @@ const initialCustomization: CustomizationOptions = {
   gridlines: { color: '#ccccccFF', width: 0.5, style: 'lines', type: 'square', density: 20, columns: 10, rows: 10 },
   elementGuides: { color: '#007aff80', width: 0.5, style: 'dashed' },
   alignmentGuides: { color: '#ff478580', width: 0.5, style: 'dashed' },
+  rulers: { background: '#FFFFFFFF', text: '#888888FF' },
+  guides: { color: '#007affFF' },
   canvasBackground: '#f9fafbFF',
 };
 
@@ -37,6 +40,8 @@ export default function App(): JSX.Element {
   const [showGridlines, setShowGridlines] = useState<boolean>(true);
   const [showElementGuides, setShowElementGuides] = useState<boolean>(false);
   const [showAlignmentGuides, setShowAlignmentGuides] = useState<boolean>(false);
+  const [showRulers, setShowRulers] = useState<boolean>(true);
+  const [guides, setGuides] = useState<Guide[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [openPanel, setOpenPanel] = useState<string | null>(null);
   const [customization, setCustomization] = useState<CustomizationOptions>(initialCustomization);
@@ -67,6 +72,7 @@ export default function App(): JSX.Element {
                     resetSvgDataHistory(parsedData);
                     setExportDimensions({ width: parsedData.width, height: parsedData.height });
                     setSelectedPathIndex(null);
+                    setGuides([]);
                     setError(null);
                 }
             } catch (err) {
@@ -210,6 +216,18 @@ export default function App(): JSX.Element {
         paths: newPaths,
       };
     });
+  }, []);
+
+  const handleAddGuide = useCallback((orientation: 'horizontal' | 'vertical', position: number) => {
+    setGuides(prev => [...prev, { id: Date.now().toString(), orientation, position }]);
+  }, []);
+
+  const handleUpdateGuide = useCallback((id: string, position: number) => {
+    setGuides(prev => prev.map(g => g.id === id ? { ...g, position } : g));
+  }, []);
+
+  const handleRemoveGuide = useCallback((id: string) => {
+    setGuides(prev => prev.filter(g => g.id !== id));
   }, []);
 
   // Keyboard shortcuts for undo/redo
@@ -363,6 +381,8 @@ export default function App(): JSX.Element {
         setShowElementGuides={setShowElementGuides}
         showAlignmentGuides={showAlignmentGuides}
         setShowAlignmentGuides={setShowAlignmentGuides}
+        showRulers={showRulers}
+        setShowRulers={setShowRulers}
         hasSVG={!!displayedSvgData}
         svgData={displayedSvgData}
         customization={customization}
@@ -391,6 +411,11 @@ export default function App(): JSX.Element {
           showGridlines={showGridlines}
           showElementGuides={showElementGuides}
           showAlignmentGuides={showAlignmentGuides}
+          showRulers={showRulers}
+          guides={guides}
+          onAddGuide={handleAddGuide}
+          onUpdateGuide={handleUpdateGuide}
+          onRemoveGuide={handleRemoveGuide}
           error={error}
           customization={customization}
           onHandleMove={handleHandleMove}
