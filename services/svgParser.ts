@@ -1,246 +1,199 @@
-import type { Point, Handle, SVGPathData, ParsedSVG, PathSegment } from '../types';
+import svgpath from "svgpath";
+import type { Point, Handle, ParsedSVG, PathSegment } from "../types";
+export const segmentsToD = (segments: PathSegment[]) =>
+  segments.map((s) => s.command + s.values.join(" ")).join("");
 
-export const segmentsToD = (segments: PathSegment[]): string => {
-    return segments.map(seg => seg.command + seg.values.join(' ')).join('');
+export function parsePathD(d: string) {
+  const normalized = svgpath(d).abs().unshort().unarc();
+  const error = (normalized as typeof normalized & { err?: string }).err;
+  if (error) throw new Error(error);
+  const points: Point[] = [],
+    handles: Handle[] = [],
+    segments: PathSegment[] = [];
+  let p = { x: 0, y: 0 },
+    start = { ...p };
+  normalized.iterate((s: any[]) => {
+    let command = s[0],
+      values = s.slice(1) as number[];
+    if (command === "H") {
+      command = "L";
+      values = [values[0], p.y];
+    }
+    if (command === "V") {
+      command = "L";
+      values = [p.x, values[0]];
+    }
+    const index = segments.length;
+    const end = values.length
+      ? { x: values[values.length - 2], y: values[values.length - 1] }
+      : { ...start };
+    if (command === "C" || command === "Q") {
+      handles.push({
+        start: { ...p },
+        end: { x: values[0], y: values[1] },
+        segmentIndex: index,
+        valueIndex: 0,
+      });
+      const offset = command === "C" ? 2 : 0;
+      handles.push({
+        start: { ...end },
+        end: { x: values[offset], y: values[offset + 1] },
+        segmentIndex: index,
+        valueIndex: offset,
+      });
+    }
+    if (command === "M") start = { ...end };
+    if (command !== "Z") points.push(end);
+    p = end;
+    segments.push({ command, values });
+  });
+  return { points, handles, segments };
 }
 
-export const parseSVG = (svgContent: string): ParsedSVG => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, "image/svg+xml");
-  const svgElement = doc.querySelector("svg");
-
-  if (!svgElement) {
-    throw new Error("No SVG element found in the provided file.");
-  }
-
-  const pathElements = Array.from(svgElement.querySelectorAll("path"));
-
-  let finalViewBox: string;
-  let width: number;
-  let height: number;
-
-  // Always calculate the viewBox from the content's bounding box to prevent clipping
-  if (pathElements.length > 0) {
-    const tempSvg = svgElement.cloneNode(true) as SVGSVGElement;
-    // Remove attributes that can influence getBBox()
-    tempSvg.removeAttribute("width");
-    tempSvg.removeAttribute("height");
-    tempSvg.removeAttribute("viewBox");
-    tempSvg.style.position = "absolute";
-    tempSvg.style.visibility = "hidden";
-
-    document.body.appendChild(tempSvg);
-    try {
-      const bbox = tempSvg.getBBox();
-      if (bbox.width > 0 && bbox.height > 0) {
-        // Add 5% padding around the content
-        const padding = Math.max(bbox.width, bbox.height) * 0.05;
-        width = bbox.width + padding * 2;
-        height = bbox.height + padding * 2;
-        finalViewBox = `${bbox.x - padding} ${
-          bbox.y - padding
-        } ${width} ${height}`;
-      } else {
-        // Fallback for empty or invalid SVGs
-        width = 100;
-        height = 100;
-        finalViewBox = `0 0 100 100`;
-      }
-    } catch (e) {
-      console.error("Could not calculate bounding box for SVG:", e);
-      // Fallback
-      width = 100;
-      height = 100;
-      finalViewBox = `0 0 100 100`;
-    } finally {
-      document.body.removeChild(tempSvg);
+export function parseSVG(source: string): ParsedSVG {
+  if (source.length > 5_000_000)
+    throw new Error("Please use an SVG smaller than 5 MB.");
+  const doc = new DOMParser().parseFromString(source, "image/svg+xml");
+  const svg = doc.querySelector("svg");
+  if (!svg || doc.querySelector("parsererror"))
+    throw new Error("This file is not valid SVG.");
+  if (
+    svg.querySelector("text,use,image,foreignObject") ||
+    svg.querySelector("[clip-path],[mask]")
+  )
+    throw new Error(
+      "Expand text and SVG instances to paths, and flatten clipping masks before importing.",
+    );
+  // Whitelist geometry only. Never attach scripts, external resources, or event attributes.
+  const ns = "http://www.w3.org/2000/svg";
+  const host = document.createElementNS(ns, "svg");
+  host.style.cssText =
+    "position:absolute;visibility:hidden;pointer-events:none";
+  const copy = (input: Element, parent: Element) => {
+    if (
+      ["defs", "clippath", "mask", "pattern", "symbol"].includes(
+        input.localName.toLowerCase(),
+      )
+    )
+      return;
+    const allowed = [
+      "svg",
+      "g",
+      "path",
+      "rect",
+      "circle",
+      "ellipse",
+      "line",
+      "polyline",
+      "polygon",
+    ];
+    if (!allowed.includes(input.localName)) return;
+    const el = document.createElementNS(
+      ns,
+      input.localName === "svg" ? "g" : input.localName,
+    );
+    for (const name of [
+      "d",
+      "x",
+      "y",
+      "width",
+      "height",
+      "rx",
+      "ry",
+      "cx",
+      "cy",
+      "r",
+      "x1",
+      "x2",
+      "y1",
+      "y2",
+      "points",
+      "transform",
+      "fill-rule",
+    ]) {
+      const value = input.getAttribute(name);
+      if (value) el.setAttribute(name, value);
     }
-  } else {
-    // If no paths, use attributes from original SVG or default
-    const viewBoxAttr = svgElement.getAttribute("viewBox");
-    const widthAttr = svgElement.getAttribute("width");
-    const heightAttr = svgElement.getAttribute("height");
-    let viewBox: number[] = [];
-    if (viewBoxAttr) {
-      viewBox = viewBoxAttr
-        .split(/[\s,]+/)
-        .map(Number)
-        .filter((n) => !isNaN(n));
-    }
-    width = parseFloat(widthAttr || "0") || viewBox[2] || 100;
-    height = parseFloat(heightAttr || "0") || viewBox[3] || 100;
-    finalViewBox = viewBoxAttr || `0 0 ${width} ${height}`;
-  }
-
-
-  const paths: SVGPathData[] = pathElements.map(pathEl => {
-    const d = pathEl.getAttribute('d') || '';
-    const { points, handles, segments } = parsePathD(d);
-    return {
-      d,
-      points,
-      handles,
-      segments,
-      boundingBox: null, // BBox will be calculated later in a useEffect
-    };
-  });
-  
-  return {
-    rawSVG: svgContent,
-    viewBox: finalViewBox,
-    width,
-    height,
-    paths,
+    parent.appendChild(el);
+    for (const child of Array.from(input.children)) copy(child, el);
   };
-};
-
-
-export const parsePathD = (d: string): { points: Point[], handles: Handle[], segments: PathSegment[] } => {
-  const points: Point[] = [];
-  const handles: Handle[] = [];
-  const segments: PathSegment[] = [];
-
-  let currentPoint: Point = { x: 0, y: 0 };
-  let subpathStart: Point = { x: 0, y: 0 };
-  let lastControl: Point | null = null;
-
-  const commands = d.match(/[a-zA-Z][^a-zA-Z]*/g) || [];
-
-  for (const commandStr of commands) {
-    const rawCommand = commandStr[0];
-    const isRelative = rawCommand === rawCommand.toLowerCase();
-    const command = rawCommand.toUpperCase();
-    
-    const args = commandStr.slice(1).trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
-    const newSegment: PathSegment = { command: command, values: [] };
-
-    switch (command) {
-      case 'M': {
-        const [x, y] = [args[0], args[1]];
-        currentPoint.x = isRelative ? currentPoint.x + x : x;
-        currentPoint.y = isRelative ? currentPoint.y + y : y;
-        subpathStart = { ...currentPoint };
-        points.push({ ...currentPoint });
-        newSegment.values.push(currentPoint.x, currentPoint.y);
-        lastControl = null;
-
-        // Handle implicit Lineto commands
-        if(args.length > 2) {
-            segments.push(newSegment);
-            for(let i=2; i<args.length; i+=2) {
-                const lSegment: PathSegment = { command: 'L', values: [] };
-                currentPoint.x = isRelative ? currentPoint.x + args[i] : args[i];
-                currentPoint.y = isRelative ? currentPoint.y + args[i+1] : args[i+1];
-                points.push({...currentPoint});
-                lSegment.values.push(currentPoint.x, currentPoint.y);
-                segments.push(lSegment);
-            }
-            continue; // Skip pushing segment at the end
-        }
-        break;
-      }
-      case 'L': {
-        const [x, y] = [args[0], args[1]];
-        currentPoint.x = isRelative ? currentPoint.x + x : x;
-        currentPoint.y = isRelative ? currentPoint.y + y : y;
-        points.push({ ...currentPoint });
-        newSegment.values.push(currentPoint.x, currentPoint.y);
-        lastControl = null;
-        break;
-      }
-      case 'H': {
-        const x = args[0];
-        currentPoint.x = isRelative ? currentPoint.x + x : x;
-        points.push({ ...currentPoint });
-        newSegment.command = 'L'; // Convert H to L for easier processing
-        newSegment.values.push(currentPoint.x, currentPoint.y);
-        lastControl = null;
-        break;
-      }
-      case 'V': {
-        const y = args[0];
-        currentPoint.y = isRelative ? currentPoint.y + y : y;
-        points.push({ ...currentPoint });
-        newSegment.command = 'L'; // Convert V to L for easier processing
-        newSegment.values.push(currentPoint.x, currentPoint.y);
-        lastControl = null;
-        break;
-      }
-      case 'C': {
-        const [x1, y1, x2, y2, x, y] = args;
-        const p1 = { x: isRelative ? currentPoint.x + x1 : x1, y: isRelative ? currentPoint.y + y1 : y1 };
-        const p2 = { x: isRelative ? currentPoint.x + x2 : x2, y: isRelative ? currentPoint.y + y2 : y2 };
-        const pEnd = { x: isRelative ? currentPoint.x + x : x, y: isRelative ? currentPoint.y + y : y };
-        
-        handles.push({ start: currentPoint, end: p1, segmentIndex: segments.length, valueIndex: 0 });
-        handles.push({ start: pEnd, end: p2, segmentIndex: segments.length, valueIndex: 2 });
-        
-        currentPoint = pEnd;
-        points.push({ ...currentPoint });
-        newSegment.values.push(p1.x, p1.y, p2.x, p2.y, pEnd.x, pEnd.y);
-        lastControl = p2;
-        break;
-      }
-       case 'S': {
-        const [x2, y2, x, y] = args;
-        const p1 = lastControl ? { x: 2 * currentPoint.x - lastControl.x, y: 2 * currentPoint.y - lastControl.y } : { ...currentPoint };
-        const p2 = { x: isRelative ? currentPoint.x + x2 : x2, y: isRelative ? currentPoint.y + y2 : y2 };
-        const pEnd = { x: isRelative ? currentPoint.x + x : x, y: isRelative ? currentPoint.y + y : y };
-
-        newSegment.command = 'C'; // Convert S to C
-        
-        handles.push({ start: currentPoint, end: p1, segmentIndex: segments.length, valueIndex: 0 });
-        handles.push({ start: pEnd, end: p2, segmentIndex: segments.length, valueIndex: 2 });
-
-        currentPoint = pEnd;
-        points.push({ ...currentPoint });
-        newSegment.values.push(p1.x, p1.y, p2.x, p2.y, pEnd.x, pEnd.y);
-        lastControl = p2;
-        break;
-      }
-      case 'Q': {
-        const [x1, y1, x, y] = args;
-        const p1 = { x: isRelative ? currentPoint.x + x1 : x1, y: isRelative ? currentPoint.y + y1 : y1 };
-        const pEnd = { x: isRelative ? currentPoint.x + x : x, y: isRelative ? currentPoint.y + y : y };
-        
-        handles.push({ start: currentPoint, end: p1, segmentIndex: segments.length, valueIndex: 0 });
-        // For quadratic, both handles point to the same control point.
-        // We link the draggable visual to the first control point.
-        // A full conversion to cubic might be better, but this works for visualization and interaction.
-        handles.push({ start: pEnd, end: p1, segmentIndex: segments.length, valueIndex: 0 });
-
-        currentPoint = pEnd;
-        points.push({ ...currentPoint });
-        newSegment.values.push(p1.x, p1.y, pEnd.x, pEnd.y);
-        lastControl = p1;
-        break;
-      }
-       case 'T': {
-        const [x, y] = args;
-        const p1 = lastControl ? { x: 2 * currentPoint.x - lastControl.x, y: 2 * currentPoint.y - lastControl.y } : { ...currentPoint };
-        const pEnd = { x: isRelative ? currentPoint.x + x : x, y: isRelative ? currentPoint.y + y : y };
-
-        newSegment.command = 'Q'; // Convert T to Q
-        
-        handles.push({ start: currentPoint, end: p1, segmentIndex: segments.length, valueIndex: 0 });
-        handles.push({ start: pEnd, end: p1, segmentIndex: segments.length, valueIndex: 0 });
-
-        currentPoint = pEnd;
-        points.push({ ...currentPoint });
-        newSegment.values.push(p1.x, p1.y, pEnd.x, pEnd.y);
-        lastControl = p1;
-        break;
-      }
-      case 'Z':
-        currentPoint = subpathStart;
-        lastControl = null;
-        newSegment.values = [];
-        break;
-      default:
-        continue;
-    }
-    segments.push(newSegment);
+  copy(svg, host);
+  document.body.appendChild(host);
+  try {
+    const shapes = Array.from(
+      host.querySelectorAll("path,rect,circle,ellipse,line,polyline,polygon"),
+    ) as SVGGraphicsElement[];
+    const paths = shapes
+      .map((el) => {
+        const a = (key: string, fallback = 0) =>
+          Number(el.getAttribute(key) || fallback);
+        let d = el.getAttribute("d") || "";
+        if (el.localName === "rect") {
+          const x = a("x"),
+            y = a("y"),
+            w = a("width"),
+            h = a("height"),
+            rx = Math.min(a("rx", a("ry")), w / 2),
+            ry = Math.min(a("ry", rx), h / 2);
+          d =
+            rx && ry
+              ? `M${x + rx} ${y}H${x + w - rx}A${rx} ${ry} 0 0 1 ${x + w} ${y + ry}V${y + h - ry}A${rx} ${ry} 0 0 1 ${x + w - rx} ${y + h}H${x + rx}A${rx} ${ry} 0 0 1 ${x} ${y + h - ry}V${y + ry}A${rx} ${ry} 0 0 1 ${x + rx} ${y}Z`
+              : `M${x} ${y}h${w}v${h}h${-w}Z`;
+        } else if (["circle", "ellipse"].includes(el.localName)) {
+          const x = a("cx"),
+            y = a("cy"),
+            rx = a("r", a("rx")),
+            ry = a("r", a("ry"));
+          d = `M${x - rx} ${y}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`;
+        } else if (el.localName === "line")
+          d = `M${a("x1")} ${a("y1")}L${a("x2")} ${a("y2")}`;
+        else if (["polygon", "polyline"].includes(el.localName))
+          d = `M${el.getAttribute("points") || ""}${el.localName === "polygon" ? "Z" : ""}`;
+        const m = el.getCTM();
+        const transformed = svgpath(d).abs().unshort().unarc();
+        if (m) transformed.matrix([m.a, m.b, m.c, m.d, m.e, m.f]);
+        const data = parsePathD(transformed.toString());
+        const canonical = segmentsToD(data.segments);
+        const p = document.createElementNS(ns, "path");
+        p.setAttribute("d", canonical);
+        host.appendChild(p);
+        const b = p.getBBox();
+        p.remove();
+        return {
+          d: canonical,
+          ...data,
+          fillRule: (el.getAttribute("fill-rule") ||
+            el.closest("[fill-rule]")?.getAttribute("fill-rule") ||
+            "nonzero") as "nonzero" | "evenodd",
+          boundingBox: {
+            x: b.x,
+            y: b.y,
+            width: b.width,
+            height: b.height,
+          } as SVGRect,
+        };
+      })
+      .filter((p) => p.segments.length);
+    if (!paths.length)
+      throw new Error(
+        "No vector geometry found. Convert text to outlines and expand SVG instances first.",
+      );
+    const boxes = paths.map((p) => p.boundingBox);
+    const x = Math.min(...boxes.map((b) => b.x)),
+      y = Math.min(...boxes.map((b) => b.y));
+    const w = Math.max(...boxes.map((b) => b.x + b.width)) - x,
+      h = Math.max(...boxes.map((b) => b.y + b.height)) - y;
+    const pad = Math.max(w, h, 1) * 0.18,
+      width = Math.max(w, 1) + pad * 2,
+      height = Math.max(h, 1) + pad * 2;
+    return {
+      rawSVG: source,
+      viewBox: `${x - pad} ${y - pad} ${width} ${height}`,
+      width,
+      height,
+      paths,
+    };
+  } finally {
+    host.remove();
   }
-
-  return { points, handles, segments };
-};
+}

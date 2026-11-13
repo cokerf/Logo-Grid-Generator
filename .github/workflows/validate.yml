@@ -1,0 +1,41 @@
+name: Validate generator
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+        env:
+          CHROME_BIN: google-chrome
+      - name: Inspect encoded video
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          ffprobe -v error -show_entries stream=codec_name,width,height,r_frame_rate,nb_frames,duration -of json /tmp/logo-grid-tests/construction.mp4
+          ffmpeg -v error -i /tmp/logo-grid-tests/construction.mp4 -f null -
+      - name: Package Figma development plugin
+        run: zip -r logo-grid-figma-plugin.zip manifest.json figma/dist
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generator-validation-and-plugin
+          path: |
+            /tmp/logo-grid-tests/results.json
+            /tmp/logo-grid-tests/browser.log
+            /tmp/logo-grid-tests/construction.mp4
+            /tmp/logo-grid-tests/preview.png
+            logo-grid-figma-plugin.zip

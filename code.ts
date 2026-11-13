@@ -1,57 +1,91 @@
-
-// FIX: Add declarations for Figma's global variables and types to resolve TypeScript errors
-// when the @figma/plugin-typings are not available in the linting environment.
-declare const figma: any;
-declare const __html__: any;
-type VectorNode = any;
-type RGB = { r: number; g: number; b: number };
-type SolidPaint = any;
-
-
-// This file holds the main code for the plugin. It has access to the Figma API.
-
-// 1. --- SETUP ---
-figma.showUI(__html__, { width: 320, height: 680 });
-
-// 2. --- SEND SELECTION TO UI ---
-async function sendSelectionToUI() {
-  const selection = figma.currentPage.selection;
-  const vector = selection.find(node => node.type === 'VECTOR') as VectorNode;
-
-  if (vector) {
-    const svgContent = await vector.exportAsync({ format: 'SVG_STRING' });
-    figma.ui.postMessage({ type: 'selection', svgContent, nodeId: vector.id });
-  } else {
-    figma.ui.postMessage({ type: 'deselection' });
+/// <reference types="@figma/plugin-typings" />
+// Figma main context. The generator runs in the isolated UI iframe.
+figma.showUI(__html__, { width: 960, height: 740, themeColors: true });
+let selectionVersion = 0;
+async function sendSelection() {
+  const version = ++selectionVersion;
+  const selected = figma.currentPage.selection;
+  if (selected.length !== 1) {
+    figma.ui.postMessage({ type: "deselection" });
+    return;
+  }
+  const node = selected[0];
+  if (!("exportAsync" in node)) {
+    figma.ui.postMessage({
+      type: "error",
+      message: "Select an exportable vector, group, or frame.",
+    });
+    return;
+  }
+  try {
+    const svgContent = await node.exportAsync({
+      format: "SVG_STRING",
+      svgOutlineText: true,
+      svgIdAttribute: false,
+    });
+    if (version === selectionVersion)
+      figma.ui.postMessage({
+        type: "selection",
+        svgContent,
+        nodeId: node.id,
+        name: node.name,
+      });
+  } catch (error) {
+    figma.ui.postMessage({
+      type: "error",
+      message: `Could not read selection: ${String(error)}`,
+    });
   }
 }
-
-// Initial check on plugin start
-sendSelectionToUI();
-
-// Listen for selection changes in Figma
-figma.on('selectionchange', sendSelectionToUI);
-
-
-// 3. --- RECEIVE MESSAGES FROM UI ---
-figma.ui.onmessage = async (msg) => {
-  if (msg.type === 'update-path') {
-    const { nodeId, newD } = msg;
-    const node = await figma.getNodeByIdAsync(nodeId) as VectorNode;
-    if (node) {
-      // Figma's vector representation is complex. The easiest way to update
-      // a path is to create a new node from the updated SVG and replace the old one.
-      const parent = node.parent;
-      if (parent) {
-         const newNode = figma.createNodeFromSvg(`<svg><path d="${newD}" /></svg>`);
-         // Position and replace
-         const vectorChild = newNode.children[0] as VectorNode;
-         vectorChild.x = node.x;
-         vectorChild.y = node.y;
-         parent.appendChild(vectorChild);
-         node.remove();
-         figma.currentPage.selection = [vectorChild];
-      }
+figma.on("selectionchange", () => void sendSelection());
+figma.ui.onmessage = async (message: unknown) => {
+  if (!message || typeof message !== "object" || !("type" in message)) return;
+  if (message.type === "ready") {
+    await sendSelection();
+    return;
+  }
+  if (message.type === "insert-construction") {
+    const msg = message as {
+      type: string;
+      svg?: string;
+      sourceNodeId?: string;
+    };
+    if (typeof msg.svg !== "string" || msg.svg.length > 15_000_000) {
+      figma.ui.postMessage({
+        type: "error",
+        message: "Construction SVG is missing or too large.",
+      });
+      return;
+    }
+    let frame: FrameNode | undefined;
+    try {
+      const source = msg.sourceNodeId
+        ? await figma.getNodeByIdAsync(msg.sourceNodeId)
+        : null;
+      frame = figma.createNodeFromSvg(msg.svg);
+      frame.name = `${source && "name" in source ? source.name : "Logo"} / Construction`;
+      const bounds =
+        source && "absoluteBoundingBox" in source
+          ? source.absoluteBoundingBox
+          : null;
+      frame.x = bounds
+        ? bounds.x + bounds.width + 80
+        : figma.viewport.center.x - frame.width / 2;
+      frame.y = bounds ? bounds.y : figma.viewport.center.y - frame.height / 2;
+      frame.setPluginData("generator", "Logo Grid Generator");
+      if (msg.sourceNodeId)
+        frame.setPluginData("sourceNodeId", msg.sourceNodeId);
+      // Keep the source intact. Construction paths remain editable Figma vectors.
+      figma.viewport.scrollAndZoomIntoView([frame]);
+      figma.commitUndo();
+      figma.notify("Construction added as editable vectors");
+      figma.ui.postMessage({ type: "inserted", nodeId: frame.id });
+    } catch (error) {
+      frame?.remove();
+      figma.ui.postMessage({
+        type: "error",
+        message: `Could not insert construction: ${String(error)}`,
+      });
     }
   }
 };

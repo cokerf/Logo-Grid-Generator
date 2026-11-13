@@ -1,17 +1,10 @@
-import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
-
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
-        }
-      }
-    };
-});
+import { defineConfig } from "vite";
+import { viteSingleFile } from "vite-plugin-singlefile";
+export default defineConfig(({ mode }) => ({
+  base: "./",
+  plugins: mode === "plugin" ? [viteSingleFile()] : [],
+  build: {
+    outDir: mode === "plugin" ? "figma/dist" : "dist",
+    emptyOutDir: true,
+  },
+}));

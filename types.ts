@@ -1,12 +1,11 @@
-
 export interface Point {
   x: number;
   y: number;
 }
 
 export interface PathSegment {
-    command: string;
-    values: number[];
+  command: string;
+  values: number[];
 }
 
 export interface Handle {
@@ -18,6 +17,7 @@ export interface Handle {
 
 export interface SVGPathData {
   d: string;
+  fillRule?: "nonzero" | "evenodd";
   points: Point[];
   handles: Handle[];
   segments: PathSegment[];
@@ -34,7 +34,7 @@ export interface ParsedSVG {
 
 export interface Guide {
   id: string;
-  orientation: 'horizontal' | 'vertical';
+  orientation: "horizontal" | "vertical";
   position: number;
 }
 
@@ -48,7 +48,7 @@ export interface CustomizationOptions {
   anchors: {
     color: string;
     size: number;
-    shape: 'square' | 'circle';
+    shape: "square" | "circle";
   };
   handles: {
     color: string;
@@ -57,13 +57,13 @@ export interface CustomizationOptions {
   outlines: {
     color: string;
     width: number;
-    style: 'solid' | 'dashed';
+    style: "solid" | "dashed";
   };
   gridlines: {
     color: string;
     width: number;
-    style: 'lines' | 'dots';
-    type: 'square' | 'columns';
+    style: "lines" | "dots";
+    type: "square" | "columns";
     density: number;
     columns: number;
     rows: number;
@@ -71,12 +71,12 @@ export interface CustomizationOptions {
   elementGuides: {
     color: string;
     width: number;
-    style: 'solid' | 'dashed';
+    style: "solid" | "dashed";
   };
   alignmentGuides: {
     color: string;
     width: number;
-    style: 'solid' | 'dashed';
+    style: "solid" | "dashed";
   };
   rulers: {
     background: string;
