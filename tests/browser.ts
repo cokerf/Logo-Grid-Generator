@@ -111,6 +111,7 @@ await test("Unexpanded text and textPath remain safe, measurable SVG text", () =
     p.texts.every((t) => t.boundingBox.width > 0 && t.boundingBox.height > 0),
     "Text bounds are empty",
   );
+  assert(p.texts[1].boundingBox.height>30,"Unitless SVG font-size was lost");
   assert(
     p.definitions?.includes("path") && p.texts[0].markup.includes("textPath"),
     "Text path reference lost",

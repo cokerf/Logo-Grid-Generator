@@ -833,7 +833,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               stroke={customization.path.stroke}
               strokeWidth={customization.path.strokeWidth}
               dangerouslySetInnerHTML={{
-                __html: customization.useOriginalColors
+                __html: customization.useOriginalColors && customization.showFill
                   ? text.markup
                   : text.markup.replace(
                       /fill="[^"]*"/g,

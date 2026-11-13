@@ -191,12 +191,10 @@ export default function App() {
   const loadSVG = useCallback(
     async (source: string, name: string) => {
       try {
-        await Promise.all(
-          [400, 600, 700].map((weight) =>
-            document.fonts.load(`${weight} 24px Archivo`),
-          ),
-        );
-        await document.fonts.ready;
+        if(/<text[\s>]/i.test(source)) {
+          await Promise.all([400,600,700].map(weight=>document.fonts.load(`${weight} 24px Archivo`)));
+          await document.fonts.ready;
+        }
         const parsed = parseSVG(source, fontRef.current?.family);
         reset(parsed);
         setLive(null);

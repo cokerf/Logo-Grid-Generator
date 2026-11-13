@@ -103,7 +103,8 @@ export function sanitizeGeometry(svg: Element, fontOverride?: string) {
     // Resolve internal typography classes into attributes; no CSS or external resources are injected.
     for (const name of typography) {
       const value = input.getAttribute(name);
-      if (value) style.setProperty(name, value);
+      // SVG presentation attributes accept unitless lengths; CSS declarations do not.
+      if (value && !/[<>]|url\s*\(/i.test(value)) el.setAttribute(name,value);
     }
     for (const rule of rules) {
       try {
