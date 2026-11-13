@@ -6,7 +6,7 @@ Designed and developed by [Coker Oluwafemi](https://cokeroluwafemi.com/).
 
 ## Generator
 
-- Compact Geometry, Style, and Export inspector; responsive canvas and Archivo typography.
+- Reference-inspired split workspace: preview on the left, visual construction cards and controls on the right. Persistent light and dark interface modes, responsive layout, and Archivo typography.
 - Bézier traces, curvature combs and envelopes, tangent spines, and local radius circles calculated from the actual paths using Paper.js. Tangent spines are local tangent guides, not an inferred medial-axis skeleton. Radius circles approximate local curvature; they are not a claim about how the logo was originally constructed.
 - Draggable paths and control handles, anchors, bounding boxes, grid snapping, alignment guides, ruler guides, undo, and redo.
 - Paper, Blueprint, and Ink palettes, customizable colors, stroke widths, anchor sizes, and square, column, or dot grids.
@@ -34,9 +34,9 @@ The production website is generated in `dist/`. Deploy that directory to a stati
 
 ## Import artwork
 
-Use an SVG up to 5 MB. Paths, rectangles (including rounded corners), circles, ellipses, lines, polygons, and polylines are supported, including nested group transforms, relative coordinates, repeated commands, smooth curves, quadratic curves, and elliptical arcs. Geometry is normalized into absolute line, cubic, and quadratic segments before editing.
+Use an SVG up to 5 MB. Live `<text>`, `<tspan>`, and `<textPath>` lettering is supported alongside paths, rectangles (including rounded corners), circles, ellipses, lines, polygons, and polylines, including nested group transforms, relative coordinates, repeated commands, smooth curves, quadratic curves, and elliptical arcs. Geometry is normalized into absolute line, cubic, and quadratic segments before editing.
 
-Outline text, expand SVG instances, and flatten clipping masks before import. Images, text, `<use>` instances, and clipped/masked artwork are rejected with a clear message rather than silently changing the logo. Gradients, filters, original fills, and strokes are not reproduced: this is a geometry workspace with its own styling. SVG scripts, event handlers, and external resources are never attached to the page.
+Expand SVG instances and flatten clipping masks before import. Images, `<use>` instances, and clipped/masked artwork are rejected with a clear message rather than silently changing the logo. Live text is retained without requiring outlines, including typography declared through inline styles or internal CSS classes and text positioned along an internal path. Native text fades into construction films; anchors, handles, and curvature overlays apply to vector paths. Upload a TTF, OTF, WOFF, or WOFF2 font when the original font is unavailable. Uploaded fonts stay local and are embedded in SVG, PNG, and MP4 rendering; use Reset to restore the source font family. Archivo is bundled for reliable rendering. Original solid fills can be retained with Original logo colours, or overridden by the style controls. Gradients, filters, and original stroke styling are not reproduced. SVG scripts, event handlers, and external resources are never attached to the page.
 
 Drag a path to move it; drag its control points with Control handles enabled. Drag from a ruler to add a guide; drag it outside the canvas to remove it. Ctrl/⌘ Z undoes a geometry edit, Shift Ctrl/⌘ Z or Ctrl Y redoes it. Space plays or pauses construction. Keyboard shortcuts leave focused form inputs alone.
 
@@ -99,3 +99,5 @@ Built with React, TypeScript, Vite, Paper.js, svgpath, WebCodecs, and mp4-muxer.
 ## Validation
 
 `npm run test:unit` checks SVG command normalization, arc conversion, subpath handling, Paper.js curvature, and export dimensions. `npm run test:browser` needs a Chromium-based browser (`chromium` by default, or set `CHROME_BIN`) and verifies DOM import, UI controls, construction frames, cancellation, and a real 1080 × 1350 H.264 export. GitHub Actions runs both suites and retains the sample MP4, a UI screenshot, browser results, and the packaged Figma development plugin as build artifacts.
+
+The example is a local vector tracing of the Coker Oluwafemi logo supplied by the author. It does not depend on fetching the reference JPG at runtime. Canvas grids cover the full output canvas at every aspect ratio, including stills, construction preview, and video; rulers overlay the workspace only. Interface theme changes do not overwrite artwork colours.

@@ -17,6 +17,7 @@ export interface Handle {
 
 export interface SVGPathData {
   d: string;
+  sourceFill?: string;
   fillRule?: "nonzero" | "evenodd";
   points: Point[];
   handles: Handle[];
@@ -30,6 +31,8 @@ export interface ParsedSVG {
   width: number;
   height: number;
   paths: SVGPathData[];
+  texts?: { markup: string; boundingBox: SVGRect }[];
+  definitions?: string;
 }
 
 export interface Guide {
@@ -40,6 +43,7 @@ export interface Guide {
 
 export interface CustomizationOptions {
   showFill: boolean;
+  useOriginalColors?: boolean;
   fillColor: string;
   path: {
     stroke: string;

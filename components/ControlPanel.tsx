@@ -14,6 +14,11 @@ export type Visibility = {
 };
 interface Props {
   open: boolean;
+  textCount: number;
+  onFontUpload: () => void;
+  onClearFont: () => void;
+  fontName: string;
+  onTextDemo: () => void;
   visibility: Visibility;
   setVisibility: (v: Visibility) => void;
   analysis: AnalysisOptions;
@@ -89,14 +94,128 @@ export function ControlPanel(p: Props) {
       aria-label="Generator settings"
     >
       <div className="panel-scroll">
-        <div className="panel-section">
-          <button className="upload-btn" onClick={p.onUpload}>
-            <span>＋</span> Import SVG
-          </button>
-          <div className="file-meta">
-            <span title={p.fileName}>{p.fileName.slice(0, 25)}</span>
-            <span>{p.pathCount} paths</span>
+        <div className="panel-section source-section">
+          <div className="primary-actions">
+            <button className="upload-btn" onClick={p.onUpload}>
+              Import SVG
+            </button>
+            <button
+              className="create-video"
+              disabled={!p.hasSVG}
+              onClick={() => p.onExport("mp4")}
+            >
+              Create video
+            </button>
           </div>
+          <div className="file-meta">
+            <span title={p.fileName}>{p.fileName}</span>
+            <span>
+              {p.pathCount} paths
+              {p.textCount ? ` · ${p.textCount} live text` : ""}
+            </span>
+          </div>
+          <div className="layer-gallery" aria-label="Construction layers">
+            {(
+              [
+                ["curves", "Bézier trace"],
+                ["curvature", "Curvature comb"],
+                ["spines", "Tangent spines"],
+                ["circles", "Radius circles"],
+              ] as const
+            ).map(([key, label], index) => (
+              <button
+                className={`layer-card ${a[key] ? "active" : ""}`}
+                key={key}
+                aria-pressed={a[key]}
+                onClick={() => p.setAnalysis({ ...a, [key]: !a[key] })}
+              >
+                <span className="layer-thumb">
+                  <svg viewBox="0 0 120 110" fill="none" aria-hidden="true">
+                    <path
+                      d="M20 79C20 17 100 17 100 79"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                    />
+                    {index === 0 ? (
+                      <>
+                        <path
+                          d="M20 79V17M100 79V17M20 17H100"
+                          stroke="currentColor"
+                          opacity=".35"
+                        />
+                        <circle cx="20" cy="79" r="3" fill="currentColor" />
+                        <circle cx="100" cy="79" r="3" fill="currentColor" />
+                        <circle cx="20" cy="17" r="2" fill="currentColor" />
+                        <circle cx="100" cy="17" r="2" fill="currentColor" />
+                      </>
+                    ) : index === 1 ? (
+                      <>
+                        {Array.from({ length: 15 }, (_, i) => {
+                          const t = (i / 14) * Math.PI;
+                          return (
+                            <path
+                              key={i}
+                              d={`M${60 + 40 * Math.cos(t)} ${79 - 46 * Math.sin(t)}L${60 + 53 * Math.cos(t)} ${79 - 62 * Math.sin(t)}`}
+                              stroke="currentColor"
+                              opacity=".65"
+                            />
+                          );
+                        })}
+                        <path
+                          d="M7 79C7-3 113-3 113 79"
+                          stroke="currentColor"
+                          opacity=".4"
+                        />
+                      </>
+                    ) : index === 2 ? (
+                      <path
+                        d="M7 60L31 96M24 24L48 58M54 18L66 48M73 27L104 48M90 58L114 82"
+                        stroke="currentColor"
+                        strokeDasharray="3 2"
+                      />
+                    ) : (
+                      <>
+                        <circle
+                          cx="60"
+                          cy="69"
+                          r="39"
+                          stroke="currentColor"
+                          opacity=".5"
+                        />
+                        <circle
+                          cx="37"
+                          cy="75"
+                          r="20"
+                          stroke="currentColor"
+                          opacity=".3"
+                        />
+                        <path
+                          d="M60 20V103M10 69H108"
+                          stroke="currentColor"
+                          opacity=".2"
+                        />
+                      </>
+                    )}
+                  </svg>
+                </span>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          <div className="font-controls">
+            <span>{p.fontName || "SVG text & fonts"}</span>
+            <div>
+              <button onClick={p.onFontUpload}>Upload font</button>
+              {p.fontName && <button onClick={p.onClearFont}>Reset</button>}
+              <button onClick={p.onTextDemo}>Try live text</button>
+            </div>
+          </div>
+          {p.textCount > 0 && (
+            <p className="hint">
+              Text stays live. Upload the original font if the lettering looks
+              different. Curve controls apply to vector paths.
+            </p>
+          )}
         </div>
         <div className="panel-section">
           <div className="tabs" role="tablist">
@@ -173,6 +292,7 @@ export function ControlPanel(p: Props) {
                       p.setCustomization({
                         ...c,
                         canvasBackground: bg,
+                        useOriginalColors: false,
                         fillColor: fg + "22",
                         path: { ...c.path, stroke: fg },
                         anchors: { ...c.anchors, color: accent },
@@ -183,10 +303,17 @@ export function ControlPanel(p: Props) {
                       p.setAnalysis({ ...a, color: accent });
                     }}
                   >
-                    {name}
+                    <span className="palette-strip" style={{background:`linear-gradient(90deg,${bg} 0% 25%,${fg} 25% 50%,${accent} 50% 75%,${bg} 75%)`}}/>{name}
                   </button>
                 ))}
               </div>
+              <Toggle
+                label="Original logo colours"
+                value={!!c.useOriginalColors}
+                onChange={(value) =>
+                  p.setCustomization({ ...c, useOriginalColors: value })
+                }
+              />
               <Toggle
                 label="Logo fill"
                 value={c.showFill}
@@ -201,7 +328,11 @@ export function ControlPanel(p: Props) {
               {field(
                 "Logo fill",
                 color(c.fillColor, (b) =>
-                  p.setCustomization({ ...c, fillColor: b }),
+                  p.setCustomization({
+                    ...c,
+                    useOriginalColors: false,
+                    fillColor: b,
+                  }),
                 ),
               )}
               {field(

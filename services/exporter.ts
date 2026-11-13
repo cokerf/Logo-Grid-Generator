@@ -74,11 +74,13 @@ export function applyConstruction(
     svg.querySelectorAll<SVGElement>("[data-stage]"),
   )) {
     const stage = Number(group.dataset.stage);
-    const nodes = group.matches("path,line,circle,rect,polyline,ellipse")
+    const nodes = group.matches(
+      "path,line,circle,rect,polyline,ellipse,[data-live-text]",
+    )
       ? [group]
       : Array.from(
           group.querySelectorAll<SVGGeometryElement>(
-            "path,line,circle,rect,polyline,ellipse",
+            "path,line,circle,rect,polyline,ellipse,[data-live-text]",
           ),
         );
     group.setAttribute(

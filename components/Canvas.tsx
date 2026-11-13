@@ -1,3 +1,4 @@
+import { canvasViewport } from "../services/canvasViewport";
 import { AnalysisLayers, type AnalysisOptions } from "./AnalysisLayers";
 
 import React, {
@@ -19,6 +20,8 @@ import type {
 
 interface CanvasProps {
   svgData: ParsedSVG | null;
+  canvasAspect: number;
+  fontCSS: string;
   analysis: AnalysisOptions;
   svgRef: React.RefObject<SVGSVGElement>;
   showAnchors: boolean;
@@ -178,7 +181,7 @@ const Grid: React.FC<{
       }
     }
   }
-  return <g data-stage="0">{items}</g>;
+  return <g data-stage="0" pointerEvents="none">{items}</g>;
 };
 
 const Anchors: React.FC<{
@@ -436,6 +439,8 @@ const AlignmentGuides: React.FC<{
 
 export const Canvas: React.FC<CanvasProps> = ({
   svgData,
+  canvasAspect,
+  fontCSS,
   analysis,
   svgRef,
   showAnchors,
@@ -468,14 +473,8 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const viewBox = useMemo(() => {
     if (!svgData) return { x: 0, y: 0, width: 0, height: 0 };
-    const parts = svgData.viewBox.split(" ").map(parseFloat);
-    return {
-      x: parts[0] || 0,
-      y: parts[1] || 0,
-      width: parts[2] || 0,
-      height: parts[3] || 0,
-    };
-  }, [svgData]);
+    return canvasViewport(svgData.viewBox, canvasAspect);
+  }, [svgData, canvasAspect]);
 
   const gridStep = useMemo(() => {
     if (!svgData) return 1;
@@ -734,10 +733,9 @@ export const Canvas: React.FC<CanvasProps> = ({
       )}
 
       <div
-        className="w-full h-full p-4 flex items-center justify-center"
+        className="w-full h-full flex items-center justify-center"
         style={{
-          paddingTop: showRulers ? RULER_SIZE : 16,
-          paddingLeft: showRulers ? RULER_SIZE : 16,
+          padding: 0,
         }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -745,14 +743,17 @@ export const Canvas: React.FC<CanvasProps> = ({
       >
         <svg
           ref={svgRef}
-          viewBox={svgData.viewBox}
+          viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
           className="max-w-full max-h-full"
           style={{ width: "100%", height: "100%" }}
           preserveAspectRatio="xMidYMid meet"
         >
-          {showGridlines && (
-            <Grid viewBox={viewBox} options={customization.gridlines} />
-          )}
+          <defs
+            dangerouslySetInnerHTML={{ __html: svgData.definitions || "" }}
+          />
+          <defs>
+            <style>{fontCSS}</style>
+          </defs>
           {showAlignmentGuides && svgData && (
             <AlignmentGuides
               paths={svgData.paths}
@@ -774,7 +775,9 @@ export const Canvas: React.FC<CanvasProps> = ({
           {svgData.paths.map((path, i) => {
             const isSelected = i === selectedPathIndex;
             const fillColor = customization.showFill
-              ? customization.fillColor
+              ? customization.useOriginalColors
+                ? path.sourceFill || customization.fillColor
+                : customization.fillColor
               : "none";
             return (
               <g key={i}>
@@ -820,6 +823,28 @@ export const Canvas: React.FC<CanvasProps> = ({
               </g>
             );
           })}
+          {(svgData.texts || []).map((text, i) => (
+            <g
+              key={`text-${i}`}
+              data-stage="4"
+              data-logo="true"
+              data-live-text="true"
+              fill={customization.showFill ? customization.fillColor : "none"}
+              stroke={customization.path.stroke}
+              strokeWidth={customization.path.strokeWidth}
+              dangerouslySetInnerHTML={{
+                __html: customization.useOriginalColors
+                  ? text.markup
+                  : text.markup.replace(
+                      /fill="[^"]*"/g,
+                      `fill="${customization.showFill ? customization.fillColor : "none"}"`,
+                    ),
+              }}
+            />
+          ))}
+          {showGridlines && (
+            <Grid viewBox={viewBox} options={customization.gridlines} />
+          )}
           <AnalysisLayers data={svgData} options={analysis} />
         </svg>
       </div>
@@ -959,6 +984,7 @@ const Rulers: React.FC<{
         ref={hRulerRef}
         style={{
           position: "absolute",
+          zIndex: 12,
           top: 0,
           left: RULER_SIZE,
           width: `calc(100% - ${RULER_SIZE}px)`,
@@ -972,6 +998,7 @@ const Rulers: React.FC<{
         ref={vRulerRef}
         style={{
           position: "absolute",
+          zIndex: 12,
           top: RULER_SIZE,
           left: 0,
           width: RULER_SIZE,
@@ -983,6 +1010,7 @@ const Rulers: React.FC<{
       <div
         style={{
           position: "absolute",
+          zIndex: 12,
           top: 0,
           left: 0,
           width: RULER_SIZE,

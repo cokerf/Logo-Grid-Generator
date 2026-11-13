@@ -99,6 +99,35 @@ await test("Paper.js curvature produces finite combs, tangents, and local circle
     "Wrong curvature normal direction",
   );
 });
+await test("Unexpanded text and textPath remain safe, measurable SVG text", () => {
+  const p = parseSVG(
+    `<svg xmlns="http://www.w3.org/2000/svg"><style>.lettering{font-family:Arial;font-size:32px;font-weight:700}</style><defs><path id="arc" d="M0 100 Q100 0 200 100"/></defs><g transform="translate(20 30)"><text class="lettering"><textPath href="#arc" startOffset="20%">Coker</textPath></text><text x="40" y="160" font-size="40"><tspan>Live type</tspan></text></g></svg>`,
+  );
+  assert(
+    p.paths.length === 0 && p.texts?.length === 2,
+    "Live text was rejected or definitions rendered as artwork",
+  );
+  assert(
+    p.texts.every((t) => t.boundingBox.width > 0 && t.boundingBox.height > 0),
+    "Text bounds are empty",
+  );
+  assert(
+    p.definitions?.includes("path") && p.texts[0].markup.includes("textPath"),
+    "Text path reference lost",
+  );
+  assert(p.texts[0].markup.includes("32px"), "CSS typography was lost");
+});
+await test("External textPath references are rejected without loading resources", () => {
+  let rejected = false;
+  try {
+    parseSVG(
+      '<svg xmlns="http://www.w3.org/2000/svg"><text><textPath href="https://example.com/path.svg#x">No</textPath></text></svg>',
+    );
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, "External reference accepted");
+});
 const svg = document.createElementNS(ns, "svg");
 svg.setAttribute("viewBox", "0 0 200 200");
 svg.innerHTML =
@@ -169,7 +198,7 @@ await test("Workspace renders and construction controls update the visible canva
   for (let n = 0; n < 100 && !doc.querySelector("[data-logo]"); n++)
     await new Promise((r) => setTimeout(r, 50));
   assert(
-    doc.querySelectorAll("[data-logo]").length === 2,
+    doc.querySelectorAll("[data-logo]").length >= 2,
     "Example logo did not render",
   );
   const buttons = () => Array.from(doc.querySelectorAll("button"));

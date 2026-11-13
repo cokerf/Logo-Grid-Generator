@@ -1,3 +1,4 @@
+import { sanitizeGeometry, collectLiveText } from "./liveText.ts";
 import svgpath from "svgpath";
 import type { Point, Handle, ParsedSVG, PathSegment } from "../types";
 export const segmentsToD = (segments: PathSegment[]) =>
@@ -50,7 +51,7 @@ export function parsePathD(d: string) {
   return { points, handles, segments };
 }
 
-export function parseSVG(source: string): ParsedSVG {
+export function parseSVG(source: string, fontOverride?: string): ParsedSVG {
   if (source.length > 5_000_000)
     throw new Error("Please use an SVG smaller than 5 MB.");
   const doc = new DOMParser().parseFromString(source, "image/svg+xml");
@@ -58,71 +59,19 @@ export function parseSVG(source: string): ParsedSVG {
   if (!svg || doc.querySelector("parsererror"))
     throw new Error("This file is not valid SVG.");
   if (
-    svg.querySelector("text,use,image,foreignObject") ||
+    svg.querySelector("use,image,foreignObject") ||
     svg.querySelector("[clip-path],[mask]")
   )
     throw new Error(
-      "Expand text and SVG instances to paths, and flatten clipping masks before importing.",
+      "Expand SVG instances and flatten clipping masks before importing.",
     );
-  // Whitelist geometry only. Never attach scripts, external resources, or event attributes.
   const ns = "http://www.w3.org/2000/svg";
-  const host = document.createElementNS(ns, "svg");
-  host.style.cssText =
-    "position:absolute;visibility:hidden;pointer-events:none";
-  const copy = (input: Element, parent: Element) => {
-    if (
-      ["defs", "clippath", "mask", "pattern", "symbol"].includes(
-        input.localName.toLowerCase(),
-      )
-    )
-      return;
-    const allowed = [
-      "svg",
-      "g",
-      "path",
-      "rect",
-      "circle",
-      "ellipse",
-      "line",
-      "polyline",
-      "polygon",
-    ];
-    if (!allowed.includes(input.localName)) return;
-    const el = document.createElementNS(
-      ns,
-      input.localName === "svg" ? "g" : input.localName,
-    );
-    for (const name of [
-      "d",
-      "x",
-      "y",
-      "width",
-      "height",
-      "rx",
-      "ry",
-      "cx",
-      "cy",
-      "r",
-      "x1",
-      "x2",
-      "y1",
-      "y2",
-      "points",
-      "transform",
-      "fill-rule",
-    ]) {
-      const value = input.getAttribute(name);
-      if (value) el.setAttribute(name, value);
-    }
-    parent.appendChild(el);
-    for (const child of Array.from(input.children)) copy(child, el);
-  };
-  copy(svg, host);
+  const host = sanitizeGeometry(svg, fontOverride);
   document.body.appendChild(host);
   try {
     const shapes = Array.from(
       host.querySelectorAll("path,rect,circle,ellipse,line,polyline,polygon"),
-    ) as SVGGraphicsElement[];
+    ).filter((el) => !el.closest("defs,text")) as SVGGraphicsElement[];
     const paths = shapes
       .map((el) => {
         const a = (key: string, fallback = 0) =>
@@ -161,6 +110,7 @@ export function parseSVG(source: string): ParsedSVG {
         p.remove();
         return {
           d: canonical,
+          sourceFill: getComputedStyle(el).fill,
           ...data,
           fillRule: (el.getAttribute("fill-rule") ||
             el.closest("[fill-rule]")?.getAttribute("fill-rule") ||
@@ -174,11 +124,13 @@ export function parseSVG(source: string): ParsedSVG {
         };
       })
       .filter((p) => p.segments.length);
-    if (!paths.length)
-      throw new Error(
-        "No vector geometry found. Convert text to outlines and expand SVG instances first.",
-      );
-    const boxes = paths.map((p) => p.boundingBox);
+    const { texts, definitions } = collectLiveText(host);
+    if (!paths.length && !texts.length)
+      throw new Error("No vector geometry or live text was found in this SVG.");
+    const boxes = [
+      ...paths.map((p) => p.boundingBox),
+      ...texts.map((t) => t.boundingBox),
+    ];
     const x = Math.min(...boxes.map((b) => b.x)),
       y = Math.min(...boxes.map((b) => b.y));
     const w = Math.max(...boxes.map((b) => b.x + b.width)) - x,
@@ -192,6 +144,8 @@ export function parseSVG(source: string): ParsedSVG {
       width,
       height,
       paths,
+      texts,
+      definitions,
     };
   } finally {
     host.remove();

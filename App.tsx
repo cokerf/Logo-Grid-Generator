@@ -1,3 +1,9 @@
+import exampleLogo from "./assets/coker-example.svg?raw";
+import {
+  bundledFontCSS,
+  importFont,
+  type UploadedFont,
+} from "./services/fonts";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { ControlPanel, type Visibility } from "./components/ControlPanel";
 import { Canvas } from "./components/Canvas";
@@ -14,16 +20,17 @@ import {
   exportMP4,
   type ExportSettings,
 } from "./services/exporter";
-const demo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><path fill-rule="evenodd" d="M200 44C286.16 44 356 113.84 356 200S286.16 356 200 356S44 286.16 44 200S113.84 44 200 44ZM200 100C144.77 100 100 144.77 100 200S144.77 300 200 300S300 255.23 300 200S255.23 100 200 100Z"/><path d="M172 80C241 80 309 138 309 209C309 262 271 303 220 315L209 260C237 253 255 235 255 209C255 167 217 136 172 136Z"/></svg>`;
+const demo = exampleLogo;
 const initial: CustomizationOptions = {
   showFill: true,
-  fillColor: "#253c2620",
-  path: { stroke: "#2b382b", strokeWidth: 0.8 },
-  anchors: { color: "#536e45", size: 3, shape: "square" },
-  handles: { color: "#79925c", width: 0.7 },
+  useOriginalColors: true,
+  fillColor: "#e2defa24",
+  path: { stroke: "#e2defa", strokeWidth: 0.8 },
+  anchors: { color: "#a799ff", size: 3, shape: "square" },
+  handles: { color: "#a799ff", width: 0.7 },
   outlines: { color: "#6a8060", width: 0.7, style: "dashed" },
   gridlines: {
-    color: "#76856530",
+    color: "#c6c2dd24",
     width: 0.5,
     style: "lines",
     type: "square",
@@ -33,9 +40,9 @@ const initial: CustomizationOptions = {
   },
   elementGuides: { color: "#a05c4680", width: 0.5, style: "dashed" },
   alignmentGuides: { color: "#a05c4680", width: 0.5, style: "dashed" },
-  rulers: { background: "#f2f1eb", text: "#919487" },
+  rulers: { background: "#151515", text: "#9a96aa" },
   guides: { color: "#d28054" },
-  canvasBackground: "#f2f1eb",
+  canvasBackground: "#101010",
 };
 const isPlugin = window.parent !== window;
 function Preview({
@@ -90,10 +97,28 @@ export default function App() {
     canUndo,
     canRedo,
   } = useHistoryState<ParsedSVG | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      return localStorage.getItem("logo-grid-theme") === "light"
+        ? "light"
+        : "dark";
+    } catch {
+      return "dark";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("logo-grid-theme", theme);
+    } catch {}
+    document.documentElement.style.colorScheme = theme;
+  }, [theme]);
+  const [font, setFont] = useState<UploadedFont | null>(null);
+  const fontRef = useRef<UploadedFont | null>(null),
+    fontInput = useRef<HTMLInputElement>(null);
   const [live, setLive] = useState<ParsedSVG | null>(null),
     [visibility, setVisibility] = useState<Visibility>({
-      anchors: true,
-      handles: true,
+      anchors: false,
+      handles: false,
       outlines: false,
       grid: true,
       elementGuides: false,
@@ -108,7 +133,7 @@ export default function App() {
     circles: false,
     samples: 36,
     gain: 1,
-    color: "#66874a",
+    color: "#a799ff",
   });
   const [customization, setCustomization] = useState(initial),
     [settings, setSettings] = useState<ExportSettings>({
@@ -122,7 +147,7 @@ export default function App() {
       ending: "hold",
     });
   const [error, setError] = useState(""),
-    [fileName, setFileName] = useState("Example / orbit.svg"),
+    [fileName, setFileName] = useState("Example / coker-logo.svg"),
     [guides, setGuides] = useState<Guide[]>([]),
     [selected, setSelected] = useState<number | null>(null),
     [dragOver, setDragOver] = useState(false),
@@ -164,9 +189,15 @@ export default function App() {
     return () => observer.disconnect();
   }, [settings.width, settings.height]);
   const loadSVG = useCallback(
-    (source: string, name: string) => {
+    async (source: string, name: string) => {
       try {
-        const parsed = parseSVG(source);
+        await Promise.all(
+          [400, 600, 700].map((weight) =>
+            document.fonts.load(`${weight} 24px Archivo`),
+          ),
+        );
+        await document.fonts.ready;
+        const parsed = parseSVG(source, fontRef.current?.family);
         reset(parsed);
         setLive(null);
         setSelected(null);
@@ -182,7 +213,7 @@ export default function App() {
     [reset],
   );
   useEffect(() => {
-    loadSVG(demo, "Example / orbit.svg");
+    loadSVG(demo, "Example / coker-logo.svg");
   }, [loadSVG]);
   useEffect(() => {
     if (!isPlugin) return;
@@ -378,11 +409,11 @@ export default function App() {
     }
   };
   const previewRevision = React.useMemo(
-    () => ({ displayed, analysis, customization, visibility }),
-    [displayed, analysis, customization, visibility],
+    () => ({ displayed, analysis, customization, visibility, font }),
+    [displayed, analysis, customization, visibility, font],
   );
   return (
-    <div className={`studio ${isPlugin ? "plugin" : ""}`}>
+    <div className={`studio ${isPlugin ? "plugin" : ""}`} data-theme={theme}>
       <header className="topbar">
         <svg
           className="appmark"
@@ -401,7 +432,16 @@ export default function App() {
           <rect x="25" y="14" width="4" height="4" fill="currentColor" />
         </svg>
         <h1 className="brand">Logo Grid Generator</h1>
-        <span className="version">2.0</span>
+        <span className="version">Construction studio</span>
+        <button
+          className="theme-toggle"
+          aria-label={
+            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+          }
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        >
+          {theme === "dark" ? "☀ Light" : "☾ Dark"}
+        </button>
         <a
           className="credit"
           href="https://cokeroluwafemi.com/"
@@ -423,8 +463,42 @@ export default function App() {
           e.target.value = "";
         }}
       />
+      <input
+        ref={fontInput}
+        type="file"
+        accept=".ttf,.otf,.woff,.woff2"
+        hidden
+        aria-label="Upload font file"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          try {
+            const value = await importFont(file);
+            fontRef.current = value;
+            setFont(value);
+            if (data) await loadSVG(data.rawSVG, fileName);
+          } catch (error) {
+            setError((error as Error).message);
+          }
+        }}
+      />
       <div className="workspace">
         <ControlPanel
+          onFontUpload={() => fontInput.current?.click()}
+          fontName={font?.name || ""}
+          onClearFont={() => {
+            fontRef.current = null;
+            setFont(null);
+            if (data) void loadSVG(data.rawSVG, fileName);
+          }}
+          textCount={displayed?.texts?.length || 0}
+          onTextDemo={() =>
+            loadSVG(
+              `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500"><defs><path id="lettering" d="M70 280 C70 65 430 65 430 280"/></defs><text fill="#e2defa" font-family="Archivo" font-weight="600" font-size="48" text-anchor="middle"><textPath href="#lettering" startOffset="50%">MAKE ROOM</textPath></text><text fill="#e2defa" x="250" y="315" font-family="Archivo" font-size="72" font-weight="700" text-anchor="middle">for type.</text></svg>`,
+              "Example / live-text.svg",
+            )
+          }
           open={panel}
           visibility={visibility}
           setVisibility={setVisibility}
@@ -435,7 +509,7 @@ export default function App() {
           settings={settings}
           setSettings={setSettings}
           onUpload={() => fileRef.current?.click()}
-          onDemo={() => loadSVG(demo, "Example / orbit.svg")}
+          onDemo={() => loadSVG(demo, "Example / coker-logo.svg")}
           onExport={onExport}
           hasSVG={!!displayed}
           fileName={fileName}
@@ -445,7 +519,7 @@ export default function App() {
         />
         <main className="stage">
           <div className="stage-toolbar">
-            <div>
+            <div className="preview-modes">
               <button
                 className="mobile-panel"
                 aria-expanded={panel}
@@ -458,7 +532,7 @@ export default function App() {
                   setMode("inspect");
                   setPlaying(false);
                 }}
-                style={{ color: mode === "inspect" ? "#c6f566" : undefined }}
+                className={mode === "inspect" ? "selected-mode" : ""}
               >
                 Inspect
               </button>
@@ -467,7 +541,7 @@ export default function App() {
                   setMode("construct");
                   setTime(0);
                 }}
-                style={{ color: mode === "construct" ? "#c6f566" : undefined }}
+                className={mode === "construct" ? "selected-mode" : ""}
               >
                 Construction
               </button>
@@ -509,6 +583,32 @@ export default function App() {
               )}
             </div>
           </div>
+          <div className="aspect-presets" aria-label="Canvas proportions">
+            {[
+              [1080, 1080, "1:1"],
+              [1080, 1350, "4:5"],
+              [1080, 1920, "9:16"],
+              [1920, 1080, "16:9"],
+            ].map(([w, h, label]) => (
+              <button
+                key={label}
+                aria-label={`Canvas ${label}`}
+                aria-pressed={
+                  settings.width / settings.height === Number(w) / Number(h)
+                }
+                onClick={() =>
+                  setSettings({
+                    ...settings,
+                    width: Number(w),
+                    height: Number(h),
+                  })
+                }
+              >
+                <span style={{ aspectRatio: `${w}/${h}` }} />
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="artboard-wrap" ref={stageRef}>
             <div
               className="artboard"
@@ -522,6 +622,10 @@ export default function App() {
               >
                 <Canvas
                   svgData={displayed}
+                  canvasAspect={
+                    Math.max(settings.width, 1) / Math.max(settings.height, 1)
+                  }
+                  fontCSS={bundledFontCSS + (font?.css || "")}
                   svgRef={svgRef}
                   analysis={analysis}
                   showAnchors={visibility.anchors}

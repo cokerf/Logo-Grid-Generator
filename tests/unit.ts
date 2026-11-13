@@ -64,3 +64,19 @@ test("MP4 dimensions are finite whole even pixel counts within the canvas budget
   ])
     assert.throws(() => validateDimensions(w, h, true));
 });
+
+test("canvas viewport expands to portrait and landscape without scaling the logo", async () => {
+  const { canvasViewport } = await import("../services/canvasViewport.ts");
+  assert.deepEqual(canvasViewport("0 0 100 100", 2), {
+    x: -50,
+    y: 0,
+    width: 200,
+    height: 100,
+  });
+  assert.deepEqual(canvasViewport("0 0 100 100", 0.5), {
+    x: 0,
+    y: -50,
+    width: 100,
+    height: 200,
+  });
+});
