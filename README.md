@@ -101,3 +101,13 @@ Built with React, TypeScript, Vite, Paper.js, svgpath, WebCodecs, and mp4-muxer.
 `npm run test:unit` checks SVG command normalization, arc conversion, subpath handling, Paper.js curvature, and export dimensions. `npm run test:browser` needs a Chromium-based browser (`chromium` by default, or set `CHROME_BIN`) and verifies DOM import, UI controls, construction frames, cancellation, and a real 1080 × 1350 H.264 export. GitHub Actions runs both suites and retains the sample MP4, a UI screenshot, browser results, and the packaged Figma development plugin as build artifacts.
 
 The example is a local vector tracing of the Coker Oluwafemi logo supplied by the author. It does not depend on fetching the reference JPG at runtime. Canvas grids cover the full output canvas at every aspect ratio, including stills, construction preview, and video; rulers overlay the workspace only. Interface theme changes do not overwrite artwork colours.
+
+## Affinity add-on
+
+The build includes a native scripting add-on for Affinity by Canva 3.3.1+ and a bundled standalone generator. Download it from the application footer or `downloads/logo-grid-affinity.zip`. Import `Logo-Grid-Generator.js` into Scripting Studio, select curve layers, and run the script to add editable construction layers with a native options dialog. It uses Affinity's supported scripting SDK, adds all layers in one undo step, and leaves the source intact. Native execution still needs an Affinity Desktop installation and alignment check. See `affinity/README.md` for installation and scope.
+
+Light mode is the default. An explicit choice of dark mode is saved for subsequent visits; older automatic dark-mode preferences are reset once when moving to the new theme preference key. The example logo is unchanged.
+
+## Motion presets
+
+The Export tab includes Technical build (8s), Precision close-up (10s), Geometry tour (12s), and Quiet reveal (8s). Choosing a preset sets its construction layers, duration, camera treatment, and ending, then starts the preview. You can change the layers, duration, resolution, frame rate, quality, and ending afterward. Close-ups use smooth pans and a pullback; every preset settles into the original framing for a final hold. Camera and construction timing are shared between preview and the deterministic MP4 exporter. Interface controls and preset names are not included in the video.

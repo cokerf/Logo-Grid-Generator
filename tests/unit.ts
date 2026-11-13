@@ -80,3 +80,17 @@ test("canvas viewport expands to portrait and landscape without scaling the logo
     height: 200,
   });
 });
+
+test("all motion presets settle exactly and keep finite camera values", async () => {
+  const { cameraAt, motionPresets } = await import("../services/motion.ts");
+  for (const preset of motionPresets) {
+    for (let n = 0; n <= 100; n++) {
+      const c = cameraAt(preset.id, n / 100);
+      assert.ok(Object.values(c).every(Number.isFinite));
+      assert.ok(c.zoom >= 1);
+    }
+    assert.deepEqual(cameraAt(preset.id, 1), { zoom: 1, x: 0, y: 0 });
+  }
+  assert.ok(cameraAt("precision", 0).zoom > 1.5);
+  assert.notEqual(cameraAt("tour", 0.15).x, cameraAt("tour", 0.5).x);
+});

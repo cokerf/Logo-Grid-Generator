@@ -1,5 +1,7 @@
+import { applyCamera, type MotionPreset } from "./motion.ts";
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 export interface ExportSettings {
+  motion?: MotionPreset;
   width: number;
   height: number;
   duration: number;
@@ -67,7 +69,9 @@ export function applyConstruction(
   svg: SVGSVGElement,
   progress: number,
   ending: "hold" | "clean" = "hold",
+  motion: MotionPreset = "technical",
 ) {
+  applyCamera(svg, motion, progress);
   const clamp = (v: number) => Math.max(0, Math.min(1, v));
   const ease = (v: number) => v * v * (3 - 2 * v);
   for (const group of Array.from(
@@ -95,7 +99,12 @@ export function applyConstruction(
         group.getAttribute("opacity") || "1",
       );
     nodes.forEach((node, index) => {
-      const start = stage === 4 ? 0.22 : stage * 0.13;
+      const start =
+        stage === 4
+          ? motion === "minimal"
+            ? 0.12
+            : 0.22
+          : stage * (motion === "precision" ? 0.1 : 0.13);
       const local = ease(
         clamp(
           (progress - start - (index / Math.max(nodes.length, 1)) * 0.12) /
@@ -268,7 +277,12 @@ export async function exportMP4(
       signal.throwIfAborted();
       if (encoderError) throw encoderError;
       const svg = base.cloneNode(true) as SVGSVGElement;
-      applyConstruction(svg, frame / Math.max(1, total - 1), settings.ending);
+      applyConstruction(
+        svg,
+        frame / Math.max(1, total - 1),
+        settings.ending,
+        settings.motion,
+      );
       const img = await raster(svg, signal);
       ctx.fillStyle = background;
       ctx.fillRect(0, 0, width, height);

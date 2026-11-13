@@ -71,7 +71,7 @@ function Preview({
   }, [source, settings, background, revision]);
   if (!base) return null;
   const svg = base.cloneNode(true) as SVGSVGElement;
-  applyConstruction(svg, progress, settings.ending);
+  applyConstruction(svg, progress, settings.ending, settings.motion);
   return (
     <img
       alt="Construction animation preview"
@@ -99,16 +99,16 @@ export default function App() {
   } = useHistoryState<ParsedSVG | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     try {
-      return localStorage.getItem("logo-grid-theme") === "light"
-        ? "light"
-        : "dark";
+      return localStorage.getItem("logo-grid-theme-v3") === "dark"
+        ? "dark"
+        : "light";
     } catch {
-      return "dark";
+      return "light";
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem("logo-grid-theme", theme);
+      localStorage.setItem("logo-grid-theme-v3", theme);
     } catch {}
     document.documentElement.style.colorScheme = theme;
   }, [theme]);
@@ -137,6 +137,7 @@ export default function App() {
   });
   const [customization, setCustomization] = useState(initial),
     [settings, setSettings] = useState<ExportSettings>({
+      motion: "technical",
       width: 1080,
       height: 1350,
       duration: 8,
@@ -191,8 +192,12 @@ export default function App() {
   const loadSVG = useCallback(
     async (source: string, name: string) => {
       try {
-        if(/<text[\s>]/i.test(source)) {
-          await Promise.all([400,600,700].map(weight=>document.fonts.load(`${weight} 24px Archivo`)));
+        if (/<text[\s>]/i.test(source)) {
+          await Promise.all(
+            [400, 600, 700].map((weight) =>
+              document.fonts.load(`${weight} 24px Archivo`),
+            ),
+          );
           await document.fonts.ready;
         }
         const parsed = parseSVG(source, fontRef.current?.family);
@@ -514,6 +519,11 @@ export default function App() {
           pathCount={displayed?.paths.length || 0}
           plugin={isPlugin}
           onInsert={insert}
+          onPreviewMotion={() => {
+            setMode("construct");
+            setTime(0);
+            setPlaying(true);
+          }}
         />
         <main className="stage">
           <div className="stage-toolbar">

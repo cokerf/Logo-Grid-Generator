@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run typecheck && vite build && node scripts/build-web.mjs && npm run build:plugin",
+    "build": "npm run typecheck && vite build && node scripts/build-web.mjs && npm run build:plugin && npm run build:affinity",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "build:plugin": "vite build --mode plugin && node scripts/build-plugin.mjs",
     "test": "npm run test:unit && npm run test:browser",
-    "test:unit": "node --experimental-strip-types --test tests/unit.ts",
-    "test:browser": "node scripts/test.mjs"
+    "test:unit": "node --experimental-strip-types --test tests/unit.ts && node --test tests/affinity.test.mjs",
+    "test:browser": "node scripts/test.mjs",
+    "build:affinity": "node scripts/build-affinity.mjs"
   },
   "dependencies": {
     "@fontsource/archivo": "^5.3.0",

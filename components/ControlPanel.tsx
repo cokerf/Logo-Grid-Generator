@@ -1,3 +1,5 @@
+import { motionPresets, type MotionPreset } from "../services/motion";
+import { ConstructionIcon } from "./ConstructionIcon";
 import React, { useState } from "react";
 import type { CustomizationOptions } from "../types";
 import type { AnalysisOptions } from "./AnalysisLayers";
@@ -35,6 +37,7 @@ interface Props {
   pathCount: number;
   plugin: boolean;
   onInsert: () => void;
+  onPreviewMotion: () => void;
 }
 export const Toggle = ({
   label,
@@ -122,7 +125,7 @@ export function ControlPanel(p: Props) {
                 ["spines", "Tangent spines"],
                 ["circles", "Radius circles"],
               ] as const
-            ).map(([key, label], index) => (
+            ).map(([key, label]) => (
               <button
                 className={`layer-card ${a[key] ? "active" : ""}`}
                 key={key}
@@ -130,73 +133,7 @@ export function ControlPanel(p: Props) {
                 onClick={() => p.setAnalysis({ ...a, [key]: !a[key] })}
               >
                 <span className="layer-thumb">
-                  <svg viewBox="0 0 120 110" fill="none" aria-hidden="true">
-                    <path
-                      d="M20 79C20 17 100 17 100 79"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                    />
-                    {index === 0 ? (
-                      <>
-                        <path
-                          d="M20 79V17M100 79V17M20 17H100"
-                          stroke="currentColor"
-                          opacity=".35"
-                        />
-                        <circle cx="20" cy="79" r="3" fill="currentColor" />
-                        <circle cx="100" cy="79" r="3" fill="currentColor" />
-                        <circle cx="20" cy="17" r="2" fill="currentColor" />
-                        <circle cx="100" cy="17" r="2" fill="currentColor" />
-                      </>
-                    ) : index === 1 ? (
-                      <>
-                        {Array.from({ length: 15 }, (_, i) => {
-                          const t = (i / 14) * Math.PI;
-                          return (
-                            <path
-                              key={i}
-                              d={`M${60 + 40 * Math.cos(t)} ${79 - 46 * Math.sin(t)}L${60 + 53 * Math.cos(t)} ${79 - 62 * Math.sin(t)}`}
-                              stroke="currentColor"
-                              opacity=".65"
-                            />
-                          );
-                        })}
-                        <path
-                          d="M7 79C7-3 113-3 113 79"
-                          stroke="currentColor"
-                          opacity=".4"
-                        />
-                      </>
-                    ) : index === 2 ? (
-                      <path
-                        d="M7 60L31 96M24 24L48 58M54 18L66 48M73 27L104 48M90 58L114 82"
-                        stroke="currentColor"
-                        strokeDasharray="3 2"
-                      />
-                    ) : (
-                      <>
-                        <circle
-                          cx="60"
-                          cy="69"
-                          r="39"
-                          stroke="currentColor"
-                          opacity=".5"
-                        />
-                        <circle
-                          cx="37"
-                          cy="75"
-                          r="20"
-                          stroke="currentColor"
-                          opacity=".3"
-                        />
-                        <path
-                          d="M60 20V103M10 69H108"
-                          stroke="currentColor"
-                          opacity=".2"
-                        />
-                      </>
-                    )}
-                  </svg>
+                  <ConstructionIcon mode={key} />
                 </span>
                 <span>{label}</span>
               </button>
@@ -303,7 +240,13 @@ export function ControlPanel(p: Props) {
                       p.setAnalysis({ ...a, color: accent });
                     }}
                   >
-                    <span className="palette-strip" style={{background:`linear-gradient(90deg,${bg} 0% 25%,${fg} 25% 50%,${accent} 50% 75%,${bg} 75%)`}}/>{name}
+                    <span
+                      className="palette-strip"
+                      style={{
+                        background: `linear-gradient(90deg,${bg} 0% 25%,${fg} 25% 50%,${accent} 50% 75%,${bg} 75%)`,
+                      }}
+                    />
+                    {name}
                   </button>
                 ))}
               </div>
@@ -479,6 +422,45 @@ export function ControlPanel(p: Props) {
               </div>
               {format === "mp4" ? (
                 <>
+                  <div className="motion-presets" aria-label="Motion presets">
+                    {motionPresets.map((preset) => (
+                      <button
+                        key={preset.id}
+                        className={
+                          (s.motion || "technical") === preset.id
+                            ? "active"
+                            : ""
+                        }
+                        aria-pressed={(s.motion || "technical") === preset.id}
+                        onClick={() => {
+                          p.setSettings({
+                            ...s,
+                            motion: preset.id as MotionPreset,
+                            duration: preset.duration,
+                            ending: preset.id === "minimal" ? "clean" : "hold",
+                          });
+                          p.setAnalysis({
+                            ...a,
+                            curves: true,
+                            curvature: preset.id === "tour",
+                            spines: preset.id === "precision",
+                            circles: preset.id === "tour",
+                          });
+                          p.setVisibility({
+                            ...v,
+                            grid: preset.id !== "minimal",
+                            anchors: preset.id === "precision",
+                            handles: preset.id === "precision",
+                          });
+                          p.onPreviewMotion();
+                        }}
+                      >
+                        <strong>{preset.name}</strong>
+                        <span>{preset.description}</span>
+                      </button>
+                    ))}
+                  </div>
+
                   {field(
                     "Duration",
                     <select
@@ -697,6 +679,20 @@ export function ControlPanel(p: Props) {
       </div>
       <footer className="panel-footer">
         <span>Logo Grid Generator</span>
+        <span className="integration-downloads">
+          <a
+            href={`${import.meta.env.BASE_URL}downloads/logo-grid-affinity.zip`}
+            download
+          >
+            Affinity add-on
+          </a>
+          <a
+            href={`${import.meta.env.BASE_URL}downloads/logo-grid-figma-plugin.zip`}
+            download
+          >
+            Figma plugin
+          </a>
+        </span>
         <span>v2.0</span>
       </footer>
     </aside>
