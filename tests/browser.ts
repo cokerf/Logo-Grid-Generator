@@ -210,15 +210,27 @@ await test("Workspace renders and construction controls update the visible canva
     await new Promise((r) => setTimeout(r, 80));
   };
   const curvature = Array.from(doc.querySelectorAll("label"))
-    .find((l) => l.textContent?.trim() === "Curvature comb")
+    .find((l) => l.textContent?.trim() === "Dimension guides")
     ?.querySelector("input");
-  assert(curvature, "Missing curvature toggle");
+  assert(curvature, "Missing dimensions toggle");
   curvature!.click();
   await new Promise((r) => setTimeout(r, 80));
   assert(
-    doc.querySelector('[data-stage="3"] path'),
-    "Curvature layer did not render",
+    doc.querySelector('[data-dimensions] path'),
+    "Dimension layer did not render",
   );
+  const canvas=doc.querySelector('.artboard svg') as unknown as SVGSVGElement;
+  assert(canvas.querySelector('[data-logo]')?.getAttribute('fill')==='none','Logo fill must default off');
+  const rulerSettings={width:1080,height:1350,duration:3,fps:24,quality:'high',includeGuides:true,includeRulers:true,transparent:false,ending:'hold'} as ExportSettings;
+  const withRulers=makeExportSVG(canvas,rulerSettings,'#101010');
+  assert(withRulers.querySelector('[data-export-rulers] text'),'Enabled rulers must export with scale labels');
+  assert(!makeExportSVG(canvas,{...rulerSettings,includeRulers:false},'#101010').querySelector('[data-export-rulers]'),'Export ruler toggle must remove rulers');
+  canvas.setAttribute('data-rulers','false');
+  assert(!makeExportSVG(canvas,rulerSettings,'#101010').querySelector('[data-export-rulers]'),'Hidden canvas rulers must stay absent from exports');
+  canvas.setAttribute('data-rulers','true');
+  const label=withRulers.querySelector('[data-export-rulers]')!.textContent;
+  applyConstruction(withRulers,.2,'hold','precision');
+  assert(withRulers.querySelector('[data-export-rulers]')!.textContent!==label,'Export ruler scale should follow camera zoom');
   await click("Style");
   await click("Blueprint");
   assert(

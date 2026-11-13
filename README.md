@@ -1,13 +1,13 @@
 # Logo Grid Generator
 
-A compact workspace for studying logo geometry and making construction films. Import an SVG, inspect its anchors and Bézier handles, trace curvature with Paper.js, and export the construction as editable vectors, a still image, or an H.264 MP4.
+A compact workspace for studying logo geometry and making construction films. Import an SVG, inspect its anchors and Bézier handles, study dimensions and tangents with Paper.js, and export the construction as editable vectors, a still image, or an H.264 MP4.
 
 Designed and developed by [Coker Oluwafemi](https://cokeroluwafemi.com/).
 
 ## Generator
 
 - Reference-inspired split workspace: preview on the left, visual construction cards and controls on the right. Persistent light and dark interface modes, responsive layout, and Archivo typography.
-- Bézier traces, curvature combs and envelopes, tangent spines, and local radius circles calculated from the actual paths using Paper.js. Tangent spines are local tangent guides, not an inferred medial-axis skeleton. Radius circles approximate local curvature; they are not a claim about how the logo was originally constructed.
+- Bézier traces, dimension guides, tangent spines, and local radius circles calculated from the actual paths using Paper.js. Tangent spines are local tangent guides, not an inferred medial-axis skeleton. Radius circles approximate local curvature; they are not a claim about how the logo was originally constructed.
 - Draggable paths and control handles, anchors, bounding boxes, grid snapping, alignment guides, ruler guides, undo, and redo.
 - Paper, Blueprint, and Ink palettes, customizable colors, stroke widths, anchor sizes, and square, column, or dot grids.
 - Construction preview with play/pause, scrubbing, and a clean-logo or construction-hold ending.
@@ -36,7 +36,7 @@ The production website is generated in `dist/`. Deploy that directory to a stati
 
 Use an SVG up to 5 MB. Live `<text>`, `<tspan>`, and `<textPath>` lettering is supported alongside paths, rectangles (including rounded corners), circles, ellipses, lines, polygons, and polylines, including nested group transforms, relative coordinates, repeated commands, smooth curves, quadratic curves, and elliptical arcs. Geometry is normalized into absolute line, cubic, and quadratic segments before editing.
 
-Expand SVG instances and flatten clipping masks before import. Images, `<use>` instances, and clipped/masked artwork are rejected with a clear message rather than silently changing the logo. Live text is retained without requiring outlines, including typography declared through inline styles or internal CSS classes and text positioned along an internal path. Native text fades into construction films; anchors, handles, and curvature overlays apply to vector paths. Upload a TTF, OTF, WOFF, or WOFF2 font when the original font is unavailable. Uploaded fonts stay local and are embedded in SVG, PNG, and MP4 rendering; use Reset to restore the source font family. Archivo is bundled for reliable rendering. Original solid fills can be retained with Original logo colours, or overridden by the style controls. Gradients, filters, and original stroke styling are not reproduced. SVG scripts, event handlers, and external resources are never attached to the page.
+Expand SVG instances and flatten clipping masks before import. Images, `<use>` instances, and clipped/masked artwork are rejected with a clear message rather than silently changing the logo. Live text is retained without requiring outlines, including typography declared through inline styles or internal CSS classes and text positioned along an internal path. Native text fades into construction films; anchors, handles, and geometry overlays apply to vector paths. Upload a TTF, OTF, WOFF, or WOFF2 font when the original font is unavailable. Uploaded fonts stay local and are embedded in SVG, PNG, and MP4 rendering; use Reset to restore the source font family. Archivo is bundled for reliable rendering. Original solid fills can be retained with Original logo colours, or overridden by the style controls. Gradients, filters, and original stroke styling are not reproduced. SVG scripts, event handlers, and external resources are never attached to the page.
 
 Drag a path to move it; drag its control points with Control handles enabled. Drag from a ruler to add a guide; drag it outside the canvas to remove it. Ctrl/⌘ Z undoes a geometry edit, Shift Ctrl/⌘ Z or Ctrl Y redoes it. Space plays or pauses construction. Keyboard shortcuts leave focused form inputs alone.
 
@@ -111,3 +111,16 @@ Light mode is the default. An explicit choice of dark mode is saved for subseque
 ## Motion presets
 
 The Export tab includes Technical build (8s), Precision close-up (10s), Geometry tour (12s), and Quiet reveal (8s). Choosing a preset sets its construction layers, duration, camera treatment, and ending, then starts the preview. You can change the layers, duration, resolution, frame rate, quality, and ending afterward. Close-ups use smooth pans and a pullback; every preset settles into the original framing for a final hold. Camera and construction timing are shared between preview and the deterministic MP4 exporter. Interface controls and preset names are not included in the video.
+
+
+## Curated logo library
+
+The web app offers 12 selected WorldVectorLogo brands plus the bundled Coker logo. No random or search endpoints are used. Each selection requests one SVG detail through `/.netlify/functions/worldvectorlogo`; the server accepts only the curated slugs in `services/logoCatalog.ts`. Successful responses are cached in the Netlify CDN (seven days), the warm function instance and the browser (seven days). The initial canvas loads the local Coker logo without any API call.
+
+To connect your account, open the existing Netlify project's **Project configuration → Environment variables** and add `WORLDVECTORLOGO_API_KEY` with your key, enabled for the **Functions** scope and **Production** context. Save it, then redeploy. Do not prefix it with `VITE_`, commit it, or paste it into the generator. The function sends it to WorldVectorLogo using the Authorization Bearer header; the browser never receives it.
+
+Missing credentials, 429s, provider errors, timeouts, and unsupported SVGs restore the local Coker example. There is no automatic retry loop. After a 429 the browser pauses provider requests for five minutes; warm server instances respect the provider's reset/cooldown. Cached logos remain available. The Figma and standalone builds retain their local logo and link to the Netlify app for the connected library.
+
+## Rulers and outline defaults
+
+Logo fill and Original logo colours start off. Enable either in Style as needed. **Export → Include rulers** is checked initially and includes rulers only when **Geometry → Rulers** is on. This applies to SVG, PNG, construction previews and MP4. Rulers remain fixed to the output frame and update their source-coordinate labels during camera zooms. Dimension guide measurements are in SVG user units (`u`), not output pixels. Dimension guides replace the former curvature comb, including editable dimension brackets in the Affinity add-on.

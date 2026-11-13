@@ -1,3 +1,4 @@
+import { updateExportRulers } from "./exportRulers.ts";
 import { applyCamera, type MotionPreset } from "./motion.ts";
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 export interface ExportSettings {
@@ -8,6 +9,7 @@ export interface ExportSettings {
   fps: number;
   quality: "standard" | "high";
   includeGuides: boolean;
+  includeRulers?: boolean;
   transparent: boolean;
   ending: "hold" | "clean";
 }
@@ -49,22 +51,28 @@ export function makeExportSVG(
       .querySelectorAll("#element-guides,#alignment-guides")
       .forEach((n) => n.remove());
   svg.querySelectorAll("[style]").forEach((n) => n.removeAttribute("style"));
-  if (!settings.transparent) {
-    // A nested viewport keeps the background behind letterboxed artwork at every aspect ratio.
-    const outer = document.createElementNS(ns, "svg");
-    outer.setAttribute("xmlns", ns);
-    outer.setAttribute("width", String(settings.width));
-    outer.setAttribute("height", String(settings.height));
-    outer.setAttribute("viewBox", `0 0 ${settings.width} ${settings.height}`);
-    const rect = document.createElementNS(ns, "rect");
-    rect.setAttribute("width", "100%");
-    rect.setAttribute("height", "100%");
-    rect.setAttribute("fill", background);
-    outer.append(rect, svg);
-    return outer;
+  // Keep artwork and camera inside a nested viewport; rulers stay fixed to the output frame.
+  const outer = document.createElementNS(ns, "svg");
+  outer.setAttribute("xmlns", ns);
+  outer.setAttribute("width", String(settings.width));
+  outer.setAttribute("height", String(settings.height));
+  outer.setAttribute("viewBox", `0 0 ${settings.width} ${settings.height}`);
+  if(!settings.transparent){
+    const rect=document.createElementNS(ns,"rect");
+    rect.setAttribute("width","100%");rect.setAttribute("height","100%");rect.setAttribute("fill",background);
+    outer.append(rect);
   }
-  return svg;
+  outer.append(svg);
+  if(settings.includeRulers!==false && source.getAttribute("data-rulers")==="true"){
+    const rulers=document.createElementNS(ns,"g");
+    rulers.setAttribute("data-export-rulers","true");
+    rulers.setAttribute("data-background",source.getAttribute("data-ruler-background")||"#151515");
+    rulers.setAttribute("data-ink",source.getAttribute("data-ruler-text")||"#9a96aa");
+    outer.append(rulers);updateExportRulers(outer);
+  }
+  return outer;
 }
+
 export function applyConstruction(
   svg: SVGSVGElement,
   progress: number,
@@ -72,6 +80,7 @@ export function applyConstruction(
   motion: MotionPreset = "technical",
 ) {
   applyCamera(svg, motion, progress);
+  updateExportRulers(svg);
   const clamp = (v: number) => Math.max(0, Math.min(1, v));
   const ease = (v: number) => v * v * (3 - 2 * v);
   for (const group of Array.from(
@@ -79,12 +88,12 @@ export function applyConstruction(
   )) {
     const stage = Number(group.dataset.stage);
     const nodes = group.matches(
-      "path,line,circle,rect,polyline,ellipse,[data-live-text]",
+      "path,line,circle,rect,polyline,ellipse,text,[data-live-text]",
     )
       ? [group]
       : Array.from(
           group.querySelectorAll<SVGGeometryElement>(
-            "path,line,circle,rect,polyline,ellipse,[data-live-text]",
+            "path,line,circle,rect,polyline,ellipse,text,[data-live-text]",
           ),
         );
     group.setAttribute(

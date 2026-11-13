@@ -1,3 +1,5 @@
+import { LogoLibrary } from "./components/LogoLibrary";
+import { PlaybackButton } from "./components/PlaybackButton";
 import exampleLogo from "./assets/coker-example.svg?raw";
 import {
   bundledFontCSS,
@@ -22,8 +24,8 @@ import {
 } from "./services/exporter";
 const demo = exampleLogo;
 const initial: CustomizationOptions = {
-  showFill: true,
-  useOriginalColors: true,
+  showFill: false,
+  useOriginalColors: false,
   fillColor: "#e2defa24",
   path: { stroke: "#e2defa", strokeWidth: 0.8 },
   anchors: { color: "#a799ff", size: 3, shape: "square" },
@@ -113,7 +115,7 @@ export default function App() {
     });
   const [analysis, setAnalysis] = useState<AnalysisOptions>({
     curves: true,
-    curvature: false,
+    dimensions: false,
     spines: false,
     circles: false,
     samples: 36,
@@ -129,6 +131,7 @@ export default function App() {
       fps: 30,
       quality: "high",
       includeGuides: true,
+      includeRulers: true,
       transparent: false,
       ending: "hold",
     });
@@ -194,8 +197,10 @@ export default function App() {
         setError("");
         setTime(0);
         setPlaying(false);
+        return true;
       } catch (e) {
         setError((e as Error).message);
+        return false;
       }
     },
     [reset],
@@ -489,6 +494,7 @@ export default function App() {
               "Example / live-text.svg",
             )
           }
+          logoLibrary={<LogoLibrary onLoad={loadSVG} onFallback={(message) => { void loadSVG(demo, "Example / coker-logo.svg"); setNotice(message); }} />}
           open={panel}
           visibility={visibility}
           setVisibility={setVisibility}
@@ -544,14 +550,8 @@ export default function App() {
             <div>
               {mode === "construct" ? (
                 <>
-                  <button
-                    onClick={() => {
-                      if (time >= 1) setTime(0);
-                      setPlaying(!playing);
-                    }}
-                  >
-                    {playing ? "Pause" : "Play"}
-                  </button>
+                  <PlaybackButton playing={playing} progress={time} onClick={() => { if(time>=1)setTime(0); setPlaying(!playing); }} />
+                  <span className="timecode">{(time*settings.duration).toFixed(1)}<span> / {settings.duration}s</span></span>
                   <input
                     className="timeline"
                     aria-label="Construction progress"

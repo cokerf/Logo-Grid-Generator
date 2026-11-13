@@ -743,6 +743,9 @@ export const Canvas: React.FC<CanvasProps> = ({
       >
         <svg
           ref={svgRef}
+          data-rulers={showRulers ? "true" : "false"}
+          data-ruler-background={customization.rulers.background}
+          data-ruler-text={customization.rulers.text}
           viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
           className="max-w-full max-h-full"
           style={{ width: "100%", height: "100%" }}

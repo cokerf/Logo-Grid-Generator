@@ -9,7 +9,7 @@ A native scripting add-on for **Affinity by Canva 3.3.1 or newer**, using the su
 3. Select curve layers, or a group containing curve layers. For shapes and text, convert a copy to curves first.
 4. Run the script, choose the construction layers in its native dialog, and confirm.
 
-The script creates editable grid, Bézier trace, anchor and handle, curvature comb, tangent spine, and radius circle layers in the current spread. Source artwork stays intact. The entire addition is one undo step. Cancel does not change the document. Complex selections are bounded to prevent generating excessive geometry.
+The script creates editable grid, Bézier trace, anchor and handle, dimension brackets, tangent spine, and radius circle layers in the current spread. Source artwork stays intact. The entire addition is one undo step. Cancel does not change the document. Complex selections are bounded to prevent generating excessive geometry.
 
 The native grid surrounds the selected logo with 15% padding. For an exact output canvas, live SVG text, style controls, and construction MP4, open the included `generator.html` in Chrome/Edge, or use https://logo-grid-generator.netlify.app/. Export the artwork as SVG from Affinity, import it into the generator, then open/place the exported construction SVG back in Affinity. MP4 encoding needs a browser with H.264 WebCodecs support; the hosted HTTPS app is the preferred export surface.
 

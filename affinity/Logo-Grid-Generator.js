@@ -51,7 +51,7 @@
     grid: group.addCheckBox("Canvas grid", true),
     trace: group.addCheckBox("Bézier trace", true),
     anchors: group.addCheckBox("Anchor points and handles", true),
-    curvature: group.addCheckBox("Curvature comb", false),
+    dimensions: group.addCheckBox("Dimension guides", false),
     spines: group.addCheckBox("Tangent spines", false),
     circles: group.addCheckBox("Radius circles", false),
   };
@@ -93,6 +93,19 @@
         height: marker,
       }),
     );
+  }
+  if (enabled.dimensions) {
+    const x=bounds.x, y=bounds.y, r=x+bounds.width, b=y+bounds.height,
+      gap=scale*.055, tick=scale*.008;
+    const key="Dimension guides";
+    line(key,{x,y:b},{x,y:b+gap+tick*2});
+    line(key,{x:r,y:b},{x:r,y:b+gap+tick*2});
+    line(key,{x,y:b+gap},{x:r,y:b+gap});
+    line(key,{x:r,y},{x:r+gap+tick*2,y});
+    line(key,{x:r,y:b},{x:r+gap+tick*2,y:b});
+    line(key,{x:r+gap,y},{x:r+gap,y:b});
+    for(const px of [x,r])line(key,{x:px-tick,y:b+gap+tick},{x:px+tick,y:b+gap-tick});
+    for(const py of [y,b])line(key,{x:r+gap-tick,y:py+tick},{x:r+gap+tick,y:py-tick});
   }
   if (enabled.grid) {
     const pad = scale * 0.15,
@@ -160,17 +173,6 @@
           nx = -ty,
           ny = tx,
           k = (dx * ddy - dy * ddx) / (speed * speed * speed);
-        if (enabled.curvature && Math.abs(k) > 1e-8) {
-          const length = Math.max(
-            -scale * 0.15,
-            Math.min(scale * 0.15, k * scale * scale * 0.015),
-          );
-          line(
-            "Curvature comb",
-            { x, y },
-            { x: x - nx * length, y: y - ny * length },
-          );
-        }
         if (i % 4 === 0) {
           if (enabled.spines)
             line(

@@ -15,6 +15,7 @@ export type Visibility = {
   snap: boolean;
 };
 interface Props {
+  logoLibrary: React.ReactNode;
   open: boolean;
   textCount: number;
   onFontUpload: () => void;
@@ -117,11 +118,12 @@ export function ControlPanel(p: Props) {
               {p.textCount ? ` · ${p.textCount} live text` : ""}
             </span>
           </div>
+          {p.logoLibrary}
           <div className="layer-gallery" aria-label="Construction layers">
             {(
               [
                 ["curves", "Bézier trace"],
-                ["curvature", "Curvature comb"],
+                ["dimensions", "Dimension guides"],
                 ["spines", "Tangent spines"],
                 ["circles", "Radius circles"],
               ] as const
@@ -177,7 +179,7 @@ export function ControlPanel(p: Props) {
               {(
                 [
                   ["curves", "Bézier trace"],
-                  ["curvature", "Curvature comb"],
+                  ["dimensions", "Dimension guides"],
                   ["spines", "Tangent spines"],
                   ["circles", "Radius circles"],
                 ] as const
@@ -196,7 +198,7 @@ export function ControlPanel(p: Props) {
                 ),
               )}
               {field(
-                "Comb scale",
+                "Dimension spacing",
                 range(
                   a.gain,
                   0.2,
@@ -206,7 +208,7 @@ export function ControlPanel(p: Props) {
                 ),
               )}
               <p className="hint">
-                Curvature and tangents calculated from your vector paths with
+                Dimensions and tangents calculated from your vector paths with
                 Paper.js.
               </p>
             </>
@@ -442,7 +444,7 @@ export function ControlPanel(p: Props) {
                           p.setAnalysis({
                             ...a,
                             curves: true,
-                            curvature: preset.id === "tour",
+                            dimensions: preset.id === "tour",
                             spines: preset.id === "precision",
                             circles: preset.id === "tour",
                           });
@@ -536,6 +538,10 @@ export function ControlPanel(p: Props) {
                   onChange={(b) => p.setSettings({ ...s, transparent: b })}
                 />
               )}
+              <label className="export-check">
+                <input type="checkbox" checked={s.includeRulers !== false} onChange={(e) => p.setSettings({...s, includeRulers:e.target.checked})} />
+                <span>Include rulers<small>Shown in exports when canvas rulers are on.</small></span>
+              </label>
               <Toggle
                 label="Include alignment guides"
                 value={s.includeGuides}

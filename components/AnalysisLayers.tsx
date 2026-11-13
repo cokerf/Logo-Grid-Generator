@@ -3,7 +3,7 @@ import { analyzePath } from "../services/geometry";
 import type { ParsedSVG } from "../types";
 export interface AnalysisOptions {
   curves: boolean;
-  curvature: boolean;
+  dimensions: boolean;
   spines: boolean;
   circles: boolean;
   samples: number;
@@ -20,7 +20,7 @@ export function AnalysisLayers({
   const scale = Math.max(data.width, data.height);
   const analysis = useMemo(
     () =>
-      options.curvature || options.spines || options.circles
+      options.spines || options.circles
         ? data.paths.map((p) =>
             analyzePath(p.d, scale, options.samples, options.gain),
           )
@@ -28,7 +28,6 @@ export function AnalysisLayers({
     [
       data,
       scale,
-      options.curvature,
       options.spines,
       options.circles,
       options.samples,
@@ -49,16 +48,22 @@ export function AnalysisLayers({
           ))}
         </g>
       )}
-      {options.curvature && (
-        <g data-stage="3" opacity=".7">
-          {analysis.map((a, i) => (
-            <g key={i}>
-              <path d={a.comb} strokeWidth={scale * 0.0006} />
-              <path d={a.envelope} />
-            </g>
-          ))}
-        </g>
-      )}
+      {options.dimensions && (() => {
+        const boxes = data.paths.map(p=>p.boundingBox).filter((b): b is SVGRect=>!!b);
+        if(!boxes.length)return null;
+        const x=Math.min(...boxes.map(b=>b.x)), y=Math.min(...boxes.map(b=>b.y)),
+          right=Math.max(...boxes.map(b=>b.x+b.width)), bottom=Math.max(...boxes.map(b=>b.y+b.height)),
+          gap=scale*.055*options.gain, tick=scale*.008, tx=right+gap, ty=bottom+gap;
+        return <g data-stage="3" data-dimensions="true" opacity=".8" strokeWidth={scale*.0009}>
+          <path d={`M${x} ${bottom}V${ty+tick*2}M${right} ${bottom}V${ty+tick*2}M${x} ${ty}H${right}M${right} ${y}H${tx+tick*2}M${right} ${bottom}H${tx+tick*2}M${tx} ${y}V${bottom}`} />
+          {[x,right].map((a,i)=><path key={'h'+i} d={`M${a-tick} ${ty+tick}l${tick*2} ${-tick*2}`}/>)}
+          {[y,bottom].map((a,i)=><path key={'v'+i} d={`M${tx-tick} ${a+tick}l${tick*2} ${-tick*2}`}/>)}
+          <g fill={options.color} stroke="none" fontFamily="Archivo,Arial,sans-serif" fontSize={scale*.018} textAnchor="middle">
+            <text x={(x+right)/2} y={ty+scale*.025}>{Number((right-x).toFixed(1))} u</text>
+            <text transform={`translate(${tx+scale*.025} ${(y+bottom)/2}) rotate(-90)`}>{Number((bottom-y).toFixed(1))} u</text>
+          </g>
+        </g>;
+      })()}
       {options.spines && (
         <g
           data-stage="1"

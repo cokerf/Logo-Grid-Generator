@@ -1,5 +1,5 @@
 import React from "react";
-type Mode = "curves" | "curvature" | "spines" | "circles";
+type Mode = "curves" | "dimensions" | "spines" | "circles";
 // All four illustrations share one cubic, so handles, normals and local radii agree.
 function sample(t: number) {
   const q = 1 - t,
@@ -36,9 +36,6 @@ function sample(t: number) {
   return { x, y, tx, ty, nx: -ty, ny: tx, k };
 }
 export function ConstructionIcon({ mode }: { mode: Mode }) {
-  const samples = Array.from({ length: 19 }, (_, i) =>
-    sample(0.04 + (i * 0.92) / 18),
-  );
   const r = sample(0.51),
     radius = 1 / r.k,
     cx = r.x + r.nx * radius,
@@ -72,31 +69,11 @@ export function ConstructionIcon({ mode }: { mode: Mode }) {
           ))}
         </>
       )}
-      {mode === "curvature" && (
-        <g strokeWidth=".85" opacity=".65">
-          {samples.map((p, i) => {
-            const l = Math.min(20, p.k * 570);
-            return (
-              <line
-                key={i}
-                x1={p.x}
-                y1={p.y}
-                x2={p.x - p.nx * l}
-                y2={p.y - p.ny * l}
-              />
-            );
-          })}
-          <polyline
-            points={samples
-              .map((p) => {
-                const l = Math.min(20, p.k * 570);
-                return `${p.x - p.nx * l},${p.y - p.ny * l}`;
-              })
-              .join(" ")}
-            opacity=".6"
-          />
-        </g>
-      )}
+      {mode === "dimensions" && <g strokeWidth=".9" opacity=".7">
+        <path d="M19 85V102M101 83V102M19 96H101M15 100L23 92M97 100L105 92M101 30H114M101 83H114M110 30V83M107 33L113 27M107 86L113 80"/>
+        <rect x="49" y="91" width="24" height="10" fill="var(--input)" stroke="none"/>
+        <text x="61" y="99" textAnchor="middle" fontSize="8" stroke="none" fill="currentColor">82 u</text>
+      </g>}
       {mode === "spines" && (
         <g strokeWidth="1">
           {[0.06, 0.26, 0.5, 0.74, 0.94].map((t) => {

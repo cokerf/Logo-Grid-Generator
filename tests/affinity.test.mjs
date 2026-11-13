@@ -134,7 +134,7 @@ test("Affinity add-on creates all construction layers with a single mutation", (
       "Anchor points and handles",
       "Bézier trace",
       "Canvas grid",
-      "Curvature comb",
+      "Dimension guides",
       "Radius circles",
       "Tangent spines",
     ]
