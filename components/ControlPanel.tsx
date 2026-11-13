@@ -1,4 +1,5 @@
 import { motionPresets, type MotionPreset } from "../services/motion";
+import { DrawingPanel } from "./DrawingPanel";
 import { ConstructionIcon } from "./ConstructionIcon";
 import React, { useState } from "react";
 import type { CustomizationOptions } from "../types";
@@ -16,6 +17,8 @@ export type Visibility = {
 };
 interface Props {
   logoLibrary: React.ReactNode;
+  logoScale:number;
+  onInspect:()=>void;
   open: boolean;
   textCount: number;
   onFontUpload: () => void;
@@ -158,7 +161,7 @@ export function ControlPanel(p: Props) {
         </div>
         <div className="panel-section">
           <div className="tabs" role="tablist">
-            {["Geometry", "Style", "Export"].map((t) => (
+            {["Geometry", "Drawing", "Style", "Export"].map((t) => (
               <button
                 key={t}
                 role="tab"
@@ -213,6 +216,7 @@ export function ControlPanel(p: Props) {
               </p>
             </>
           )}
+          {tab === "Drawing" && <DrawingPanel c={c} a={a} v={v} scale={p.logoScale} setC={p.setCustomization} setA={p.setAnalysis} setV={p.setVisibility} onInspect={p.onInspect}/>}
           {tab === "Style" && (
             <>
               <div className="section-title">
@@ -336,13 +340,15 @@ export function ControlPanel(p: Props) {
                       ...c,
                       anchors: {
                         ...c.anchors,
-                        shape: e.target.value as "circle" | "square",
+                        shape: e.target.value as CustomizationOptions["anchors"]["shape"],
                       },
                     })
                   }
                 >
                   <option value="square">Square</option>
                   <option value="circle">Circle</option>
+                  <option value="cross">Cross</option>
+                  <option value="diamond">Diamond</option>
                 </select>,
               )}
             </>
@@ -567,7 +573,7 @@ export function ControlPanel(p: Props) {
             </>
           )}
         </div>
-        {tab !== "Export" && (
+        {(tab === "Geometry" || tab === "Style") && (
           <div className="panel-section">
             <div className="section-title">
               <span>{tab === "Geometry" ? "WORKSPACE" : "GRID"}</span>

@@ -138,6 +138,18 @@ export function applyConstruction(
           "fill-opacity",
           String(ease(clamp((progress - 0.69) / 0.17))),
         );
+      // Reveal dashed/dotted guide lines by extending their endpoints, preserving the dash pattern.
+      if(node.localName==='line' && (node.hasAttribute('stroke-dasharray') || node.parentElement?.closest('[stroke-dasharray]'))){
+        if(!node.hasAttribute('data-line-x2')){
+          node.setAttribute('data-line-x2',node.getAttribute('x2')||'0');
+          node.setAttribute('data-line-y2',node.getAttribute('y2')||'0');
+        }
+        const x1=Number(node.getAttribute('x1')||0),y1=Number(node.getAttribute('y1')||0),
+          x2=Number(node.getAttribute('data-line-x2')),y2=Number(node.getAttribute('data-line-y2'));
+        node.setAttribute('x2',String(x1+(x2-x1)*local));
+        node.setAttribute('y2',String(y1+(y2-y1)*local));
+        return;
+      }
       // Filled markers appear; strokes are traced using their actual SVG lengths.
       if ((node as SVGGeometryElement).getTotalLength) {
         try {

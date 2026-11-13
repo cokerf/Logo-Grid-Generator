@@ -94,3 +94,50 @@ test("all motion presets settle exactly and keep finite camera values", async ()
   assert.ok(cameraAt("precision", 0).zoom > 1.5);
   assert.notEqual(cameraAt("tour", 0.15).x, cameraAt("tour", 0.5).x);
 });
+
+
+test("shuffle changes the brand and styles preserve export-safe density and contrast",async()=>{
+  const {shuffledSlug,styleVariation}=await import('../services/styleVariation.ts');
+  assert.equal(shuffledSlug(['a','b','c'],'a',()=>0),'b');
+  assert.equal(shuffledSlug(['a','b','c'],'a',()=>.99),'c');
+  assert.equal(shuffledSlug(['a'],'a',()=>0),'a');
+  const c={canvasBackground:'#f2f1eb',path:{},anchors:{},handles:{},outlines:{},gridlines:{},rulers:{},elementGuides:{},alignmentGuides:{},guides:{}} as any;
+  const a={samples:36,gain:1} as any;
+  const v={rulers:true,snap:false} as any;
+  for(const scale of [1,300,5000])for(const seed of [0,.3,.7,.99]){
+    const variation=styleVariation(c,a,v,scale,900,()=>seed);
+    assert.notEqual(variation.customization.canvasBackground,c.canvasBackground);
+    assert.equal(variation.customization.showFill,false);
+    assert.equal(variation.customization.useOriginalColors,false);
+    assert.equal(variation.visibility.rulers,true);
+    assert.equal(variation.visibility.anchors,false);
+    assert.equal(variation.visibility.handles,false);
+    assert.equal(variation.analysis.spines,false);
+    assert.ok(variation.customization.path.strokeWidth>0);
+    assert.notEqual(variation.customization.path.stroke,variation.customization.canvasBackground);
+  }
+});
+
+test("construction extensions meet canvas edges without vertical or diagonal singularities",async()=>{
+  const {extendLine}=await import('../services/drafting.ts');
+  const box={x:-100,y:-50,width:400,height:300};
+  assert.deepEqual(extendLine({x:0,y:0},{x:0,y:1},box),{a:{x:0,y:-50},b:{x:0,y:250}});
+  assert.deepEqual(extendLine({x:0,y:0},{x:1,y:0},box),{a:{x:-100,y:0},b:{x:300,y:0}});
+  const diagonal=extendLine({x:0,y:0},{x:1,y:1},box)!;
+  for(const p of [diagonal.a,diagonal.b]){assert.equal(p.x,p.y);assert.ok(p.x===box.x||p.x===300||p.y===box.y||p.y===250);}
+  assert.equal(extendLine({x:0,y:0},{x:0,y:0},box),null);
+  assert.equal(extendLine({x:500,y:0},{x:0,y:1},box),null);
+});
+test("guide geometry follows straight SVG edges, spans the viewport, and stays bounded",async()=>{
+  const {draftingLines,defaultDrafting,measurementSplits}=await import('../services/drafting.ts');
+  const p=parsePathD('M0 100L80 0H160L80 100Z');
+  const data={width:220,height:160,viewBox:'-30 -30 220 160',rawSVG:'',paths:[{...p,d:segmentsToD(p.segments),boundingBox:{x:0,y:0,width:160,height:100}}]} as any;
+  const box={x:-100,y:-100,width:400,height:300};
+  const diagonal=draftingLines(data,box,{...defaultDrafting,guideAxes:'diagonal',diagonalSource:'edges'});
+  assert.equal(diagonal.length,2,'parallel logo edges must produce separate extensions');
+  for(const line of diagonal){assert.ok(Math.abs((line.b.y-line.a.y)/(line.b.x-line.a.x)+1.25)<1e-9);}
+  const lines=draftingLines(data,box,{...defaultDrafting,guideAxes:'both',guideLimit:4,proportions:true,measureSplits:'24,30'});
+  assert.ok(lines.length<=12);
+  assert.ok(lines.flatMap(l=>[l.a.x,l.a.y,l.b.x,l.b.y]).every(Number.isFinite));
+  assert.deepEqual(measurementSplits('30,24,24,NaN,-4,101'),[0,24,30,100]);
+});

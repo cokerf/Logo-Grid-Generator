@@ -42,6 +42,7 @@ export interface Guide {
 }
 
 export interface CustomizationOptions {
+  drafting?: DraftingOptions;
   showFill: boolean;
   useOriginalColors?: boolean;
   fillColor: string;
@@ -52,7 +53,7 @@ export interface CustomizationOptions {
   anchors: {
     color: string;
     size: number;
-    shape: "square" | "circle";
+    shape: "square" | "circle" | "cross" | "diamond";
   };
   handles: {
     color: string;
@@ -90,4 +91,34 @@ export interface CustomizationOptions {
     color: string;
   };
   canvasBackground: string;
+}
+
+export interface DraftingOptions {
+  presetId?: string;
+  hatch: boolean;
+  hatchAngle: number;
+  hatchSpacing: number;
+  hatchWidth: number;
+  hatchOpacity: number;
+  hatchColor: string;
+  guides: boolean;
+  guideAxes: 'orthogonal'|'diagonal'|'both';
+  guideSource: 'bounds'|'anchors';
+  guideStyle: 'solid'|'dashed'|'dotted';
+  guideColor: string;
+  guideWidth: number;
+  guideOpacity: number;
+  guideLimit: number;
+  diagonalSource: 'edges'|'angle';
+  diagonalAngle: number;
+  cornerMarkers: boolean;
+  cornerShape: 'circle'|'square'|'cross'|'diamond';
+  cornerSize: number;
+  cornerColor: string;
+  cornerHollow: boolean;
+  clearspace: number;
+  proportions: boolean;
+  heightUnits: number;
+  measureSplits: string;
+  labelSize: number;
 }

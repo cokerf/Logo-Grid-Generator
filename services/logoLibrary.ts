@@ -4,11 +4,11 @@ let blockedUntil=0;
 export class LogoLibraryError extends Error {
   constructor(public reason:string){super(reason);}
 }
-export async function fetchCuratedLogo(slug:string,signal?:AbortSignal) {
+export async function fetchCuratedLogo(slug:string,signal?:AbortSignal,refresh=false) {
   if(!logoCatalog.some(logo=>logo.slug===slug))throw new LogoLibraryError('unknown_logo');
   let saved=cache.get(slug);
   try{saved ||= JSON.parse(localStorage.getItem('logo-grid-library-'+slug)||'null');}catch{}
-  if(saved&&saved.expires>Date.now()&&typeof saved.svg==='string'&&saved.svg.length<=5000000){cache.set(slug,saved);return saved.svg;}
+  if(!refresh&&saved&&saved.expires>Date.now()&&typeof saved.svg==='string'&&saved.svg.length<=5000000){cache.set(slug,saved);return saved.svg;}
   if(blockedUntil>Date.now())throw new LogoLibraryError('rate_limited');
   // Bundled/offline and Figma versions retain the local fallback without sending cross-origin credentials.
   if(window.location.hostname!=='logo-grid-generator.netlify.app'&&!window.location.hostname.endsWith('.netlify.app')&&window.location.hostname!=='localhost')throw new LogoLibraryError('web_only');

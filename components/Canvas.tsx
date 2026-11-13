@@ -1,3 +1,5 @@
+import { DraftingLayers, DraftMarker, HatchDefinition } from "./DraftingLayers";
+import { defaultDrafting } from "../services/drafting";
 import { canvasViewport } from "../services/canvasViewport";
 import { AnalysisLayers, type AnalysisOptions } from "./AnalysisLayers";
 
@@ -8,6 +10,7 @@ import React, {
   DragEvent,
   useRef,
   useLayoutEffect,
+  useId,
 } from "react";
 import type {
   ParsedSVG,
@@ -184,36 +187,8 @@ const Grid: React.FC<{
   return <g data-stage="0" pointerEvents="none">{items}</g>;
 };
 
-const Anchors: React.FC<{
-  points: Point[];
-  options: CustomizationOptions["anchors"];
-}> = ({ points, options }) => (
-  <g data-stage="3">
-    {points.map((p, i) =>
-      options.shape === "square" ? (
-        <rect
-          key={i}
-          x={p.x - options.size / 2}
-          y={p.y - options.size / 2}
-          width={options.size}
-          height={options.size}
-          fill={options.color}
-          stroke={"#FFF"}
-          strokeWidth="1"
-        />
-      ) : (
-        <circle
-          key={i}
-          cx={p.x}
-          cy={p.y}
-          r={options.size / 2}
-          fill={options.color}
-          stroke={"#FFF"}
-          strokeWidth="1"
-        />
-      ),
-    )}
-  </g>
+const Anchors: React.FC<{points:Point[];options:CustomizationOptions["anchors"]}>=({points,options})=>(
+  <g data-stage="3" data-anchor-markers="true">{points.map((point,i)=><DraftMarker key={i} point={point} size={options.size} shape={options.shape} hollow={false} color={options.color}/>)}</g>
 );
 
 const Handles: React.FC<{
@@ -468,6 +443,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   isDraggingOver,
   setIsDraggingOver,
 }) => {
+  const hatchId="draft-hatch-"+useId().replace(/[^a-zA-Z0-9_-]/g,"");
+  const drafting=customization.drafting||defaultDrafting;
+  const hatchFill=`url(#${hatchId})`;
   const [dragState, setDragState] = useState<DragState | null>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -755,8 +733,10 @@ export const Canvas: React.FC<CanvasProps> = ({
             dangerouslySetInnerHTML={{ __html: svgData.definitions || "" }}
           />
           <defs>
+            {drafting.hatch&&<HatchDefinition id={hatchId} options={drafting} scale={Math.max(svgData.width,svgData.height)}/>}
             <style>{fontCSS}</style>
           </defs>
+          <DraftingLayers data={svgData} viewport={viewBox} options={drafting} layer="guides"/>
           {showAlignmentGuides && svgData && (
             <AlignmentGuides
               paths={svgData.paths}
@@ -777,7 +757,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
           {svgData.paths.map((path, i) => {
             const isSelected = i === selectedPathIndex;
-            const fillColor = customization.showFill
+            const fillColor = drafting.hatch ? hatchFill : customization.showFill
               ? customization.useOriginalColors
                 ? path.sourceFill || customization.fillColor
                 : customization.fillColor
@@ -832,19 +812,20 @@ export const Canvas: React.FC<CanvasProps> = ({
               data-stage="4"
               data-logo="true"
               data-live-text="true"
-              fill={customization.showFill ? customization.fillColor : "none"}
+              fill={drafting.hatch ? hatchFill : customization.showFill ? customization.fillColor : "none"}
               stroke={customization.path.stroke}
               strokeWidth={customization.path.strokeWidth}
               dangerouslySetInnerHTML={{
-                __html: customization.useOriginalColors && customization.showFill
+                __html: !drafting.hatch && customization.useOriginalColors && customization.showFill
                   ? text.markup
                   : text.markup.replace(
                       /fill="[^"]*"/g,
-                      `fill="${customization.showFill ? customization.fillColor : "none"}"`,
+                      `fill="${drafting.hatch ? hatchFill : customization.showFill ? customization.fillColor : "none"}"`,
                     ),
               }}
             />
           ))}
+          <DraftingLayers data={svgData} viewport={viewBox} options={drafting} layer="annotations"/>
           {showGridlines && (
             <Grid viewBox={viewBox} options={customization.gridlines} />
           )}

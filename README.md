@@ -115,12 +115,29 @@ The Export tab includes Technical build (8s), Precision close-up (10s), Geometry
 
 ## Curated logo library
 
-The web app offers 12 selected WorldVectorLogo brands plus the bundled Coker logo. No random or search endpoints are used. Each selection requests one SVG detail through `/.netlify/functions/worldvectorlogo`; the server accepts only the curated slugs in `services/logoCatalog.ts`. Successful responses are cached in the Netlify CDN (seven days), the warm function instance and the browser (seven days). The initial canvas loads the local Coker logo without any API call.
+The web app offers 11 selected WorldVectorLogo brands plus the bundled Coker logo. No random or search endpoints are used. Each brand click checks one SVG detail through `/.netlify/functions/worldvectorlogo`; the server accepts only the curated slugs in `services/logoCatalog.ts`. Successful responses are cached in the Netlify CDN (seven days), the warm function instance and the browser (seven days). The initial canvas loads the local Coker logo without any API call. All 11 curated brands also ship as verified snapshots retrieved through the configured API, so thumbnails and Shuffle logo & style need no requests. The library is expanded initially. Click a brand to load its snapshot immediately and check the API; the source label and status identify the brand. Invalid credentials now have an explicit status. The Ethereum entry was removed because its clipping/instances were incompatible with the importer.
 
 To connect your account, open the existing Netlify project's **Project configuration → Environment variables** and add `WORLDVECTORLOGO_API_KEY` with your key, enabled for the **Functions** scope and **Production** context. Save it, then redeploy. Do not prefix it with `VITE_`, commit it, or paste it into the generator. The function sends it to WorldVectorLogo using the Authorization Bearer header; the browser never receives it.
 
-Missing credentials, 429s, provider errors, timeouts, and unsupported SVGs restore the local Coker example. There is no automatic retry loop. After a 429 the browser pauses provider requests for five minutes; warm server instances respect the provider's reset/cooldown. Cached logos remain available. The Figma and standalone builds retain their local logo and link to the Netlify app for the connected library.
+Missing credentials, 429s, provider errors, timeouts, and unsupported SVGs restore the local Coker example. There is no automatic retry loop. After a 429 the browser pauses provider requests for five minutes; warm server instances respect the provider's reset/cooldown. Cached logos remain available. The Figma and standalone builds include the curated snapshots and support local shuffling; API checks are hosted in the Netlify app.
 
 ## Rulers and outline defaults
 
 Logo fill and Original logo colours start off. Enable either in Style as needed. **Export → Include rulers** is checked initially and includes rulers only when **Geometry → Rulers** is on. This applies to SVG, PNG, construction previews and MP4. Rulers remain fixed to the output frame and update their source-coordinate labels during camera zooms. Dimension guide measurements are in SVG user units (`u`), not output pixels. Dimension guides replace the former curvature comb, including editable dimension brackets in the Affinity add-on.
+
+
+### Shuffle controls
+
+**Shuffle logo & style** chooses a different logo from the 11 preloaded brands and Coker, then applies a coordinated palette, grid, geometry detail, stroke weights and motion preset. **Shuffle style** keeps the current SVG. Both keep output dimensions, fps, quality and ruler preferences; stroke weights adapt to the SVG size. Logo fill and Original logo colours remain off. Dense logos avoid the most crowded overlays. The randomizer has six contrasting palettes and stays inside the fixed curated pool; it never calls a random/search API or starts an automatic retry loop.
+
+
+## Reference drawing styles
+
+Open **Drawing** for four editable presets: **Plum hatch**, **Measured mono**, **Drafting paper**, and **Precision blue**. Presets apply to the loaded SVG; they never replace its geometry. Plum hatch uses diagonal path shading, dotted extensions and square anchor markers. Measured mono uses a filled mark, thin horizontal/vertical guides, hollow corner circles and proportion labels.
+
+- Hatching is an SVG pattern inside each original path, with its fill rule preserved. Adjust angle, spacing, stroke weight, opacity and colour. Hatching is independent of the Logo fill switch and also works on live SVG text.
+- Extended guides can follow path extents or anchor positions. Choose orthogonal, diagonal or both directions, with solid, dashed or dotted strokes. Diagonals extend real straight edges; a custom angle is used for logos without straight diagonals. Guides intersect the full canvas boundary and are deduplicated/capped to avoid excessive geometry.
+- Anchor markers and corner markers support square, circle, cross and diamond shapes. Corner markers can be hollow or solid, with configurable clear space.
+- Proportion labels use `x = logo height / Units across logo height`. Divider positions are percentages of the actual logo width (for example `24,30`). The labels show measured ratios and do not imply the logo was originally designed with those proportions.
+
+All drawing layers are native SVG elements, so web SVG/PNG exports, construction previews and MP4 films share the same result. Hatching fades in with the artwork; guide lines, markers and measurements enter through the construction timeline. These controls are also included in the bundled standalone generator. The native Affinity script retains its basic curve construction controls; use its bundled generator for these additional drawing styles and film exports.

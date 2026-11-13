@@ -1,3 +1,5 @@
+import { styleVariation } from "./services/styleVariation";
+import { motionPresets } from "./services/motion";
 import { LogoLibrary } from "./components/LogoLibrary";
 import { PlaybackButton } from "./components/PlaybackButton";
 import exampleLogo from "./assets/coker-example.svg?raw";
@@ -194,9 +196,11 @@ export default function App() {
         setSelected(null);
         setGuides([]);
         setFileName(name);
+        setNotice("");
         setError("");
         setTime(0);
         setPlaying(false);
+        setMode("inspect");
         return true;
       } catch (e) {
         setError((e as Error).message);
@@ -403,6 +407,14 @@ export default function App() {
       }
     }
   };
+  const shuffleStyle=(logo:ParsedSVG|null=displayed)=>{
+    if(!logo)return;
+    const variation=styleVariation(customization,analysis,visibility,Math.max(logo.width,logo.height),logo.paths.reduce((n,p)=>n+p.points.length,0));
+    setCustomization(variation.customization);setAnalysis(variation.analysis);setVisibility(variation.visibility);
+    const preset=motionPresets[Math.floor(Math.random()*motionPresets.length)];
+    setSettings(current=>({...current,motion:preset.id,duration:preset.duration,ending:preset.id==='minimal'?'clean':'hold'}));
+    setTime(0);setPlaying(false);setMode("inspect");setNotice(`${variation.name} · ${preset.name}`);
+  };
   const previewRevision = React.useMemo(
     () => ({ displayed, analysis, customization, visibility, font }),
     [displayed, analysis, customization, visibility, font],
@@ -494,7 +506,9 @@ export default function App() {
               "Example / live-text.svg",
             )
           }
-          logoLibrary={<LogoLibrary onLoad={loadSVG} onFallback={(message) => { void loadSVG(demo, "Example / coker-logo.svg"); setNotice(message); }} />}
+          logoScale={Math.max(displayed?.width||1000,displayed?.height||1000)}
+          onInspect={()=>{setMode("inspect");setPlaying(false);}}
+          logoLibrary={<LogoLibrary currentName={fileName} onStyle={() => shuffleStyle()} onShuffleLoad={async (svg,name) => { const success=await loadSVG(svg,name); if(success)shuffleStyle(parseSVG(svg,fontRef.current?.family)); return success; }} onLoad={loadSVG} onFallback={(message) => { void loadSVG(demo, "Example / coker-logo.svg"); setNotice(message); }} />}
           open={panel}
           visibility={visibility}
           setVisibility={setVisibility}
