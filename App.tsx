@@ -410,7 +410,7 @@ export default function App() {
             abortRef.current.signal,
             mode==='morph'&&morphModel ? (progress)=>{
               const markup=renderToStaticMarkup(renderCanvas(morphModel(morphProgress(progress,morphOptions))));
-              const svg=new DOMParser().parseFromString(markup,'image/svg+xml').querySelector('svg');
+              const svg=new DOMParser().parseFromString(markup,'text/html').querySelector('svg');
               if(!svg)throw new Error('Unable to render morph frame.');return svg as SVGSVGElement;
             }:undefined,
           ),
