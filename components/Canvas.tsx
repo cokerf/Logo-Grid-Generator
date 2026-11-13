@@ -548,7 +548,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     const currentPoint = getSVGPoint(e);
 
     if (dragState.type === "new-guide") {
-      const newId = `guide-${guides.length}`;
+      const newId = crypto.randomUUID();
       const pos =
         dragState.orientation === "horizontal"
           ? currentPoint.y

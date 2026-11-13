@@ -30,7 +30,7 @@ npm run build
 npm run preview
 ```
 
-The production website is generated in `dist/`. Deploy that directory to a static host. `base: './'` supports subdirectory hosting. Do not serve the unbuilt TypeScript files as a production website.
+The production website is generated in `dist/`. Deploy that directory to a static host. `base: './'` supports subdirectory hosting. The build also updates the bundled, ready-to-run root `index.html`, which supports this repository's existing branch-based GitHub Pages deployment without a separate Node build on GitHub. The editable HTML entry is `app.html`; do not edit the generated root `index.html` directly. The development server automatically serves `app.html` at `/`. Netlify uses `netlify.toml` to run `npm run build` with Node 22 and publish `dist/`.
 
 ## Import artwork
 
@@ -62,6 +62,8 @@ The selected visible construction layers are used in preview and export. The log
 
 ## Figma plugin
 
+[Download the Figma development plugin ZIP](https://github.com/cokerf/Logo-Grid-Generator/raw/refs/heads/main/figma/logo-grid-figma-plugin.zip), extract it, and import its `manifest.json` in Figma Desktop. No Node installation is needed for the prebuilt ZIP.
+
 The plugin uses the same bundled interface and geometry engine as the web app. It reads the current selection and can insert the styled construction as editable Figma vectors without replacing the source artwork. Select one vector, group, component, instance, or frame. Text is outlined during selection export. The SVG import limitations above also apply to Figma selections.
 
 ```sh
@@ -73,6 +75,7 @@ This produces:
 ```text
 figma/dist/code.js
 figma/dist/ui.html
+figma/logo-grid-figma-plugin.zip
 ```
 
 In Figma Desktop, open **Plugins → Development → Import plugin from manifest…** and select this repository's `manifest.json`. Keep `figma/dist/` next to the manifest at its existing path. The UI bundles its scripts, styles, and fonts and requests no network domains. Use the **Export** tab's **Insert editable construction in Figma** button to add the construction beside the selected artwork.
@@ -88,7 +91,8 @@ The repository originally contained a placeholder plugin ID. `manifest.json` ret
 - `services/geometry.ts` — Paper.js curvature and tangent analysis.
 - `services/exporter.ts` — shared construction timeline, still export, WebCodecs, and MP4 muxing.
 - `code.ts` — Figma selection and editable vector insertion.
-- `scripts/build-plugin.mjs` — standalone Figma plugin build.
+- `scripts/build-plugin.mjs` — standalone Figma plugin build, development ZIP, and prebuilt Pages entry.
+- `app.html` — editable website entry; root `index.html` is generated.
 
 Built with React, TypeScript, Vite, Paper.js, svgpath, WebCodecs, and mp4-muxer. Third-party packages retain their respective licenses.
 

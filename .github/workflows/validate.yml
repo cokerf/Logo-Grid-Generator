@@ -25,8 +25,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          ffprobe -v error -show_entries stream=codec_name,width,height,r_frame_rate,nb_frames,duration -of json /tmp/logo-grid-tests/construction.mp4
-          ffmpeg -v error -i /tmp/logo-grid-tests/construction.mp4 -f null -
+          node scripts/inspect-video.mjs
       - name: Package Figma development plugin
         run: zip -r logo-grid-figma-plugin.zip manifest.json figma/dist
       - uses: actions/upload-artifact@v4
