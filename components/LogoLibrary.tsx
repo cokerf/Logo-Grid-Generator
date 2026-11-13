@@ -56,6 +56,6 @@ export function LogoLibrary({onLoad,onShuffleLoad,onStyle,onFallback,currentName
       {logoCatalog.map(logo=><button key={logo.slug} aria-label={`${logo.name} · ${logo.kind}`} aria-pressed={selected===logo.slug} className={`library-item brand-item ${selected===logo.slug?'selected':''}`} onClick={()=>void choose(logo.slug)}><span className="brand-preview"><img src={thumbnail(preloadedLogos[logo.slug])} alt=""/></span><strong>{loading===logo.slug?'Loading…':logo.name}</strong></button>)}
       <a className="library-attribution" href="https://worldvectorlogo.com/" target="_blank" rel="noreferrer">Brand vectors from WorldVectorLogo · click a brand to check the live API</a>
     </div>}
-    {status&&<p className="hint library-status" role="status">{status}</p>}
+    {status&&(selected||currentName==='Example / coker-logo.svg')&&<p className="hint library-status" role="status">{status}</p>}
   </div>;
 }
