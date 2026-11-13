@@ -24,7 +24,7 @@ export function shuffledSlug(slugs:readonly string[],current:string,random= Math
 export function styleVariation(c:CustomizationOptions,a:AnalysisOptions,v:Visibility,scale:number,complexity:number,random=Math.random) {
   const choose=<T,>(items:readonly T[])=>items[Math.min(items.length-1,Math.floor(random()*items.length))];
   const palette=choose(studioPalettes.filter(p=>p.background!==c.canvasBackground));
-  const size=Math.max(scale,1), detail=choose(['dimensions','spines','quiet'] as const),dense=complexity>250;
+  const size=Math.max(scale,1), detail=choose(['dimensions','handles','quiet'] as const),dense=complexity>250;
   return {
     name:palette.name,
     customization:{...c,...(c.drafting?{drafting:{...c.drafting,presetId:undefined,hatchColor:palette.ink,guideColor:palette.accent,cornerColor:palette.accent}}:{}),canvasBackground:palette.background,useOriginalColors:false,showFill:false,fillColor:palette.ink+'18',
@@ -37,7 +37,7 @@ export function styleVariation(c:CustomizationOptions,a:AnalysisOptions,v:Visibi
       elementGuides:{...c.elementGuides,color:palette.accent+'66',width:size*.0005},
       alignmentGuides:{...c.alignmentGuides,color:palette.accent+'66',width:size*.0005},
       guides:{color:palette.accent}},
-    analysis:{...a,curves:true,dimensions:detail==='dimensions',spines:detail==='spines'&&!dense,circles:false,samples:choose([16,24,32]),gain:choose([.8,1,1.2]),color:palette.accent},
-    visibility:{...v,grid:random()>.15,anchors:!dense&&random()>.6,handles:!dense&&detail==='spines',outlines:false,alignment:false,elementGuides:false},
+    analysis:{...a,curves:true,dimensions:detail==='dimensions',spines:false,circles:false,samples:choose([16,24,32]),gain:choose([.8,1,1.2]),color:palette.accent},
+    visibility:{...v,grid:random()>.15,anchors:!dense&&random()>.6,handles:!dense&&detail==='handles',outlines:false,alignment:false,elementGuides:false},
   };
 }

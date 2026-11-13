@@ -164,3 +164,5 @@ Open **Morph**, between Inspect and Construction. The current logo becomes the f
 Evolution, Slow study and Continuous loop presets coordinate timing and easing. Scrub any frame, play/pause, set duration and endpoint holds, or reverse the transition. Active drawing colours, hatching, construction guides, markers, tangents and rulers follow the evolving geometry. SVG and PNG save the current frame; **Export morph** saves a frame-by-frame H.264 MP4 using the shared export dimensions, frame rate, quality and ruler settings.
 
 Paper.js matches contours by size and location, aligns their starting points, and grows or collapses unmatched parts. Original vector contours are preserved at both endpoints; intermediate contours are sampled. Different logos can have very different structures, so automatic correspondence may produce intersections during a transition. Live text and textPath remain supported and dissolve between logos; expand lettering to paths when its individual glyph contours need to morph.
+
+Randomized styles always leave tangent spines off. Enable them manually in Construction layers or from the right-click menu whenever needed.

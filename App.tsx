@@ -170,7 +170,7 @@ export default function App() {
   const morphInputs=[useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null)];
   const morphModel=React.useMemo(()=>{if(!morphFrom||!morphTo)return null;try{return prepareMorph(morphFrom,morphTo);}catch{return null;}},[morphFrom,morphTo]);
   const morphData=React.useMemo(()=>morphModel?.(morphProgress(time,morphOptions)),[morphModel,time,morphOptions]);
-  const enterMorph=()=>{if(!morphFrom&&displayed){setMorphFrom(structuredClone(displayed));setMorphNames(n=>[fileName.split(' / ').pop()||'First logo',n[1]]);}setMode('morph');setPlaying(false);setTime(0);};
+  const enterMorph=()=>{loadSequence.current++;if(!morphFrom&&displayed){setMorphFrom(structuredClone(displayed));setMorphNames(n=>[fileName.split(' / ').pop()||'First logo',n[1]]);}setMode('morph');setPlaying(false);setTime(0);};
   const importMorph=async(file:File,index:number)=>{try{if(file.size>5_000_000)throw new Error('Please use an SVG smaller than 5 MB.');const parsed=parseSVG(await file.text(),fontRef.current?.family);(index===0?setMorphFrom:setMorphTo)(parsed);setMorphNames(n=>n.map((v,i)=>i===index?file.name:v));setTime(0);setPlaying(false);setError('');}catch(e){setError((e as Error).message);}};
 
   const stageRef = useRef<HTMLDivElement>(null);
@@ -453,7 +453,7 @@ export default function App() {
     setCustomization(variation.customization);setAnalysis(variation.analysis);setVisibility(variation.visibility);
     const preset=motionPresets[Math.floor(Math.random()*motionPresets.length)];
     setSettings(current=>({...current,motion:preset.id,duration:preset.duration,ending:preset.id==='minimal'?'clean':'hold'}));
-    setTime(0);setPlaying(false);setMode("inspect");setNotice(`${variation.name} · ${preset.name}`);
+    setTime(0);setPlaying(false);setMode(current=>current==='morph'?'morph':'inspect');setNotice(`${variation.name} · ${preset.name}`);
   };
   const shuffleLogo=async()=>{
     const current=logoCatalog.find(logo=>fileName===`WorldVectorLogo / ${logo.name}`)?.slug||'coker';
@@ -480,6 +480,8 @@ export default function App() {
     () => ({ displayed, analysis, customization, visibility, font }),
     [displayed, analysis, customization, visibility, font],
   );
+  const morphScale=1000/Math.max(displayed?.width||1000,displayed?.height||1000);
+  const canvasStyle=mode==='morph'?{...customization,path:{...customization.path,strokeWidth:customization.path.strokeWidth*morphScale},anchors:{...customization.anchors,size:customization.anchors.size*morphScale},handles:{...customization.handles,width:customization.handles.width*morphScale},outlines:{...customization.outlines,width:customization.outlines.width*morphScale},gridlines:{...customization.gridlines,width:customization.gridlines.width*morphScale},elementGuides:{...customization.elementGuides,width:customization.elementGuides.width*morphScale},alignmentGuides:{...customization.alignmentGuides,width:customization.alignmentGuides.width*morphScale}}:customization;
   const renderCanvas=(frameData:ParsedSVG|null)=> (<Canvas
                   svgData={frameData}
                   canvasAspect={
@@ -495,7 +497,7 @@ export default function App() {
                   showElementGuides={visibility.elementGuides}
                   showAlignmentGuides={visibility.alignment}
                   showRulers={visibility.rulers}
-                  guides={guides}
+                  guides={mode==='morph'?[]:guides}
                   onAddGuide={(orientation, position, id) =>
                     setGuides((g) => [
                       ...g,
@@ -511,7 +513,7 @@ export default function App() {
                     setGuides((g) => g.filter((v) => v.id !== id))
                   }
                   error={null}
-                  customization={customization}
+                  customization={canvasStyle}
                   onHandleMove={moveHandle}
                   onPathMove={movePath}
                   snapToGrid={visibility.snap}
@@ -602,6 +604,7 @@ export default function App() {
       />
       <div className="workspace">
         <ControlPanel
+          morphMode={mode==='morph'}
           onFontUpload={() => fontInput.current?.click()}
           fontName={font?.name || ""}
           onClearFont={() => {
@@ -617,7 +620,7 @@ export default function App() {
             )
           }
           logoScale={Math.max(displayed?.width||1000,displayed?.height||1000)}
-          onInspect={()=>{setMode("inspect");setPlaying(false);}}
+          onInspect={()=>{setMode(current=>current==='morph'?'morph':'inspect');setPlaying(false);}}
           logoLibrary={<LogoLibrary onShuffle={()=>void shuffleLogo()} currentName={fileName} onStyle={() => shuffleStyle()} onShuffleLoad={async (svg,name) => { const success=await loadSVG(svg,name); if(success)shuffleStyle(parseSVG(svg,fontRef.current?.family)); return success; }} onLoad={loadSVG} onFallback={(message) => { void loadSVG(demo, "Example / coker-logo.svg"); setNotice(message); }} />}
           open={panel}
           visibility={visibility}
@@ -675,7 +678,7 @@ export default function App() {
             <div>
               {mode !== "inspect" ? (
                 <>
-                  <PlaybackButton playing={playing} progress={time} onClick={() => { if(mode==='morph'&&!morphModel)return; if(time>=1)setTime(0); setPlaying(!playing); }} />
+                  <PlaybackButton label={mode==='morph'?'morph':'construction'} playing={playing} progress={time} onClick={() => { if(mode==='morph'&&!morphModel)return; if(time>=1)setTime(0); setPlaying(!playing); }} />
                   <span className="timecode">{(time*settings.duration).toFixed(1)}<span> / {settings.duration}s</span></span>
                   <input
                     className="timeline"
@@ -704,7 +707,7 @@ export default function App() {
             </div>
           </div>
           {mode==='morph'&&<div className="morph-controls" aria-label="Morph controls">
-            <div className="morph-presets" aria-label="Morph animation presets">{[{name:'Evolution',duration:8,easing:'cinematic',direction:'forward',hold:.12},{name:'Slow study',duration:12,easing:'smooth',direction:'forward',hold:.18},{name:'Continuous loop',duration:10,easing:'smooth',direction:'roundtrip',hold:.08}].map(p=><button key={p.name} onClick={()=>{setMorphOptions({easing:p.easing as MorphOptions['easing'],direction:p.direction as MorphOptions['direction'],hold:p.hold});setSettings({...settings,duration:p.duration});setTime(0);setPlaying(false);}}>{p.name}</button>)}</div>
+            <div className="morph-presets" aria-label="Morph animation presets">{[{name:'Evolution',duration:8,easing:'cinematic',direction:'forward',hold:.12},{name:'Slow study',duration:12,easing:'smooth',direction:'forward',hold:.18},{name:'Continuous loop',duration:10,easing:'smooth',direction:'roundtrip',hold:.08}].map(p=><button key={p.name} aria-pressed={settings.duration===p.duration&&morphOptions.easing===p.easing&&morphOptions.direction===p.direction&&morphOptions.hold===p.hold} onClick={()=>{setMorphOptions({easing:p.easing as MorphOptions['easing'],direction:p.direction as MorphOptions['direction'],hold:p.hold});setSettings({...settings,duration:p.duration});setTime(0);setPlaying(false);}}>{p.name}</button>)}</div>
             {[0,1].map(index=><div className="morph-source" key={index}>
               <span>{index===0?'From':'To'}</span><button onClick={()=>morphInputs[index].current?.click()}>{morphNames[index]}</button>
               <input hidden ref={morphInputs[index]} type="file" accept=".svg,image/svg+xml" onChange={e=>{const file=e.target.files?.[0];if(file)void importMorph(file,index);e.target.value='';}}/>

@@ -902,3 +902,4 @@ select {
 .morph-controls button:disabled{opacity:.4;}
 .morph-presets{display:flex;gap:5px;width:100%;}
 .morph-hint{color:var(--muted);font-size:11px;flex-basis:100%;margin:0;}
+.morph-presets button[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text);}

@@ -218,6 +218,8 @@ test('morph pairs unequal compound contours, keeps endpoints exact and remains f
   for(const t of [0,.001,.25,.5,.75,.999,1])assert.ok(!/NaN|Infinity/.test(JSON.stringify(frame(t))));
   assert.notEqual(frame(.25).paths[0].d,frame(.75).paths[0].d);
   assert.equal(frame(.5).paths[0].fillRule,'evenodd');
+  assert.ok(frame(.5).paths[0].d.includes('C'));
+  assert.ok(frame(.5).paths[0].handles.length>0);
 });
 test('morph timing holds endpoints, reverses and returns for a loop',()=>{
   assert.equal(morphProgress(.1,defaultMorph),0);assert.equal(morphProgress(.9,defaultMorph),1);
@@ -239,4 +241,9 @@ test('morph keeps live textPath definitions distinct and cross-dissolves letteri
   assert.ok(frame.definitions?.includes('id="morph-to-arc"'));
   assert.ok(frame.texts?.[0].markup.includes('opacity="0.5"'));
   assert.ok(frame.texts?.[1].markup.includes('href="#morph-to-arc"'));
+});
+test('random styles never enable tangent spines, including when they were enabled manually',async()=>{
+  const {styleVariation}=await import('../services/styleVariation.ts');
+  const c={canvasBackground:'#fff',path:{},anchors:{},handles:{},outlines:{},gridlines:{},rulers:{},elementGuides:{},alignmentGuides:{},guides:{}} as any;
+  for(const complexity of [10,900])for(let seed=0;seed<100;seed++)assert.equal(styleVariation(c,{spines:true} as any,{} as any,1000,complexity,()=>seed/100).analysis.spines,false);
 });

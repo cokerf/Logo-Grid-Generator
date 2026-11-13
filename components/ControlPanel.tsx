@@ -17,6 +17,7 @@ export type Visibility = {
   snap: boolean;
 };
 interface Props {
+  morphMode?:boolean;
   logoLibrary: React.ReactNode;
   logoScale:number;
   onInspect:()=>void;
@@ -355,7 +356,7 @@ export function ControlPanel(p: Props) {
                   value={format}
                   onChange={(e) => setFormat(e.target.value as typeof format)}
                 >
-                  <option value="mp4">Construction · MP4</option>
+                  <option value="mp4">{p.morphMode?"Morph · MP4":"Construction · MP4"}</option>
                   <option value="png">Still · PNG</option>
                   <option value="svg">Vector · SVG</option>
                 </select>,
@@ -420,7 +421,7 @@ export function ControlPanel(p: Props) {
               </div>
               {format === "mp4" ? (
                 <>
-                  <div className="motion-presets" aria-label="Motion presets">
+                  {!p.morphMode&&<div className="motion-presets" aria-label="Motion presets">
                     {motionPresets.map((preset) => (
                       <button
                         key={preset.id}
@@ -459,7 +460,7 @@ export function ControlPanel(p: Props) {
                         <span>{preset.description}</span>
                       </button>
                     ))}
-                  </div>
+                  </div>}
 
                   {field(
                     "Duration",
@@ -509,7 +510,7 @@ export function ControlPanel(p: Props) {
                       <option value="high">High</option>
                     </select>,
                   )}
-                  {field(
+                  {!p.morphMode&&field(
                     "Finish",
                     <select
                       value={s.ending}
