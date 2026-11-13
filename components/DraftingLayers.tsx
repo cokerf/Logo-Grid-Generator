@@ -1,3 +1,4 @@
+import {measureComponents,runBoundaries} from '../services/measurements';
 import React,{useMemo} from 'react';
 import type {DraftingOptions,ParsedSVG,Point} from '../types';
 import {artworkBounds,draftingLines,measurementSplits,type Bounds} from '../services/drafting';
@@ -17,25 +18,27 @@ export function HatchDefinition({id,options,scale}:{id:string;options:DraftingOp
 export function DraftingLayers({data,viewport,options:o,layer}:{data:ParsedSVG;viewport:Bounds;options:DraftingOptions;layer:"guides"|"annotations"}) {
   const scale=Math.max(data.width,data.height),unit=scale/1000;
   const lines=useMemo(()=>o.guides&&layer==='guides'?draftingLines(data,viewport,o):[],[data,viewport,o,layer]);
+  const measurements=useMemo(()=>o.proportions?measureComponents(data):{x:[],y:[]},[data,o.proportions]);
   const box=artworkBounds(data);if(!box)return null;
   const margin=box.height*o.clearspace,left=box.x-margin,top=box.y-margin,right=box.x+box.width+margin,bottom=box.y+box.height+margin;
   const dash=o.guideStyle==='dotted'?`${unit*.8} ${unit*3.2}`:o.guideStyle==='dashed'?`${unit*5} ${unit*4}`:undefined;
   const corners=[{x:left,y:top},{x:right,y:top},{x:left,y:bottom},{x:right,y:bottom}];
   const gap=scale*.045,fontSize=unit*o.labelSize,tick=unit*3,base=Math.max(box.height,unit)/Math.max(.1,o.heightUnits);
-  const splits=measurementSplits(o.measureSplits).map(n=>box.x+box.width*n/100);
-  const label=(value:number)=>`${Number((value/base).toFixed(1))}x`;
+  const splits=o.measureSplits.trim()?measurementSplits(o.measureSplits).map(n=>box.x+box.width*n/100):runBoundaries(measurements.x);
+  const ySplits=runBoundaries(measurements.y);
+  const label=(value:number)=>`${Number((value/base).toPrecision(3))}x`;
   return <g pointerEvents="none" fill="none">
     {o.guides&&layer==='guides'&&<g data-stage="0" data-draft-guides="true" opacity={o.guideOpacity} stroke={o.guideColor} strokeWidth={unit*o.guideWidth} strokeDasharray={dash} strokeLinecap={o.guideStyle==='dotted'?'round':'butt'}>
       {lines.map((line,i)=><line key={i} x1={line.a.x} y1={line.a.y} x2={line.b.x} y2={line.b.y}/>)}
     </g>}
     {o.cornerMarkers&&layer==='annotations'&&<g data-stage="3" data-corner-markers="true">{corners.map((point,i)=><DraftMarker key={i} point={point} size={unit*o.cornerSize} shape={o.cornerShape} hollow={o.cornerHollow} color={o.cornerColor}/>)}</g>}
     {o.proportions&&layer==='annotations'&&<g data-stage="3" data-proportion-labels="true" stroke={o.guideColor} strokeWidth={unit*.5}>
-      <path d={`M${box.x} ${box.y-gap}H${box.x+box.width}M${box.x-gap} ${box.y}V${box.y+box.height}`}/>
+      <path d={`M${splits[0]??box.x} ${box.y-gap}H${splits.at(-1)??box.x+box.width}M${box.x-gap} ${box.y}V${box.y+box.height}`}/>
       {splits.map((x,i)=><path key={i} d={`M${x} ${box.y-gap-tick}V${box.y-gap+tick}M${x} ${box.y-gap+tick*2}V${box.y-unit*5}`} strokeOpacity=".55"/>)}
-      {[box.y,box.y+box.height].map((y,i)=><path key={i} d={`M${box.x-gap-tick} ${y}H${box.x-gap+tick}M${box.x-gap+tick*2} ${y}H${box.x-unit*5}`} strokeOpacity=".55"/>)}
+      {ySplits.map((y,i)=><path key={i} d={`M${box.x-gap-tick} ${y}H${box.x-gap+tick}M${box.x-gap+tick*2} ${y}H${box.x-unit*5}`} strokeOpacity=".55"/>)}
       <g fill={o.guideColor} stroke="none" fontFamily="Archivo,Arial,sans-serif" fontSize={fontSize} textAnchor="middle">
-        {splits.slice(1).map((x,i)=><text key={i} x={(x+splits[i])/2} y={box.y-gap-fontSize*.75}>{label(x-splits[i])}</text>)}
-        <text x={box.x-gap-fontSize*.8} y={box.y+box.height/2+fontSize*.35} textAnchor="end">{label(box.height)}</text>
+        {splits.slice(1).map((x,i)=><text key={i} data-measure-start={splits[i]} data-measure-end={x} data-measure-kind={o.measureSplits.trim()?"custom":measurements.x[i]?.kind} fontSize={Math.min(fontSize,Math.max(unit*4,(x-splits[i])*.35))} x={(x+splits[i])/2} y={box.y-gap-fontSize*.75}>{label(x-splits[i])}</text>)}
+        {ySplits.slice(1).map((y,i)=><text key={"y"+i} data-measure-axis="y" data-measure-kind={measurements.y[i]?.kind} x={box.x-gap-fontSize*.8} y={(y+ySplits[i])/2+fontSize*.35} fontSize={Math.min(fontSize,Math.max(unit*4,(y-ySplits[i])*.5))} textAnchor="end">{label(y-ySplits[i])}</text>)}
         {o.clearspace>0&&corners.map((p,i)=><text key={i} x={p.x+(i%2?-unit*16:unit*16)} y={p.y+(i>1?-unit*10:unit*16)} fontSize={fontSize*.65}>x</text>)}
       </g>
     </g>}

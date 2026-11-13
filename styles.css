@@ -882,3 +882,12 @@ select {
 .drawing-group {@apply border-t py-4; border-color:var(--line);}
 .draft-splits {width:52%;min-width:0;border:1px solid var(--line);color:var(--text);background:var(--input);border-radius:8px;padding:9px;font-size:11px;}
 .drawing-reset {width:100%;}
+/* Sharp edges across every studio control and panel. */
+.studio,.studio *,.studio *:before,.studio *:after {border-radius:0!important;}
+.palette-presets {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0;}
+.palette-presets button {padding:9px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:11px;text-align:left;}
+.palette-presets button:hover {background:var(--surface-hover);}
+.quick-menu {position:fixed;z-index:150;width:245px;max-height:calc(100dvh - 16px);overflow:auto;padding:5px;background:var(--bg);color:var(--text);border:1px solid var(--line);box-shadow:0 10px 30px #0002;}
+.quick-menu button {display:flex;align-items:center;justify-content:space-between;width:100%;min-height:31px;padding:7px 10px;border:0;background:none;color:inherit;text-align:left;font-size:11px;}
+.quick-menu button:hover,.quick-menu button:focus-visible {background:var(--surface-hover);outline-offset:-2px;}
+.quick-menu [role=separator] {height:1px;background:var(--line);margin:4px 0;}

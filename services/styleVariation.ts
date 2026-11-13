@@ -8,6 +8,14 @@ export const studioPalettes=[
   {name:'Porcelain',background:'#faf7f2',ink:'#453258',accent:'#8b56b5'},
   {name:'Clay',background:'#eee5dc',ink:'#4b2b21',accent:'#ad563d'},
   {name:'Midnight',background:'#191b2c',ink:'#eee9fe',accent:'#a799ff'},
+  {name:'Cobalt',background:'#2346d8',ink:'#fff5d9',accent:'#ffdc69'},
+  {name:'Coral',background:'#ff795f',ink:'#3c1730',accent:'#671f43'},
+  {name:'Lagoon',background:'#075552',ink:'#f6e7bd',accent:'#9fe5cf'},
+  {name:'Orchid',background:'#e5b6f3',ink:'#41204f',accent:'#673596'},
+  {name:'Citron',background:'#d8ef65',ink:'#173d34',accent:'#326b51'},
+  {name:'Tomato',background:'#b62e3c',ink:'#fff3da',accent:'#ffd578'},
+  {name:'Sunflower',background:'#f2c94c',ink:'#2f2446',accent:'#624273'},
+  {name:'Azure',background:'#b9e6f5',ink:'#133d67',accent:'#145b86'},
 ] as const;
 export function shuffledSlug(slugs:readonly string[],current:string,random= Math.random) {
   const choices=slugs.filter(slug=>slug!==current);

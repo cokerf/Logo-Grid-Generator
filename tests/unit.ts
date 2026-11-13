@@ -165,3 +165,43 @@ test("cloned SVG references follow unique IDs without changing colours or extern
   assert.equal(rewriteSVGReference('href','https://example.test/#trace',ids),'https://example.test/#trace');
   assert.equal(rewriteSVGReference('src','url(data:font/woff2;base64,AAAA)',ids),'url(data:font/woff2;base64,AAAA)');
 });
+
+test("measured guides derive actual gaps inside compound paths and do not invent percentage splits",async()=>{
+  const {measureComponents}=await import('../services/measurements.ts');
+  const {draftingLines,defaultDrafting}=await import('../services/drafting.ts');
+  const d='M0 0H30V50H0Z M40 0H65V50H40Z M75 0H100V50H75Z M5 5V45H25V5Z';
+  const p=parsePathD(d),data={width:140,height:90,viewBox:'-20 -20 140 90',rawSVG:'',paths:[{...p,d,fillRule:'nonzero',boundingBox:{x:0,y:0,width:100,height:50}}]} as any;
+  const measurement=measureComponents(data);
+  assert.deepEqual(measurement.x.map(r=>[r.start,r.end,r.kind]),[[0,30,'shape'],[30,40,'gap'],[40,65,'shape'],[65,75,'gap'],[75,100,'shape']]);
+  const lines=draftingLines(data,{x:-20,y:-20,width:140,height:90},{...defaultDrafting,proportions:true,guideAxes:'orthogonal',measureSplits:''});
+  const xs=lines.filter(l=>l.a.x===l.b.x).map(l=>l.a.x);
+  assert.deepEqual(xs,[0,30,40,65,75,100]);
+  assert.ok(!xs.includes(24));
+});
+test("wordmark row gaps remain measurable when an overhead symbol spans the same x positions",async()=>{
+  const {measureComponents}=await import('../services/measurements.ts');
+  const d='M0 0H100V15H0Z M0 40H25V70H0Z M35 40H60V70H35Z M70 40H100V70H70Z';
+  const data={width:140,height:110,paths:[{...parsePathD(d),d,fillRule:'nonzero'}]} as any;
+  const m=measureComponents(data);
+  assert.deepEqual(m.x.filter(r=>r.kind==='gap').map(r=>[r.start,r.end]),[[25,35],[60,70]]);
+  assert.deepEqual(m.y.filter(r=>r.kind==='gap').map(r=>[r.start,r.end]),[[15,40]]);
+});
+test("tangent spines extend outside both sides of the canvas frame",()=>{
+  const a=analyzePath('M0 0L100 100',100,20,1,{x:-20,y:-20,width:140,height:140});
+  assert.ok(a.spines.length>0);
+  for(const spine of a.spines){const points=parsePathD(spine).points;assert.ok(points.some(p=>p.x< -20&&p.y< -20));assert.ok(points.some(p=>p.x>120&&p.y>120));}
+});
+test("colour palettes maintain readable logo contrast against their backgrounds",async()=>{
+  const {studioPalettes}=await import('../services/styleVariation.ts');
+  const luminance=(hex:string)=>{const c=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return c[0]*.2126+c[1]*.7152+c[2]*.0722;};
+  for(const palette of studioPalettes){const a=luminance(palette.background),b=luminance(palette.ink);assert.ok((Math.max(a,b)+.05)/(Math.min(a,b)+.05)>=4.5,palette.name);}
+});
+
+test("enclosing frames and nested counters do not conceal internal wordmark gaps",async()=>{
+  const {measureComponents}=await import('../services/measurements.ts');
+  const d='M0 0H100V100H0Z M5 5H95V95H5Z M20 40H30V60H20Z M40 40H50V60H40Z M60 40H70V60H60Z';
+  const data={width:140,height:140,paths:[{...parsePathD(d),d,fillRule:'evenodd'}]} as any;
+  const m=measureComponents(data);
+  assert.deepEqual(m.x.filter(r=>r.kind==='gap').map(r=>[r.start,r.end]),[[30,40],[50,60]]);
+  assert.ok(m.xGuides.includes(0)&&m.xGuides.includes(100));
+});

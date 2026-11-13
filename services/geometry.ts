@@ -1,4 +1,5 @@
 import paper from "paper";
+import {extendLine,type Bounds} from "./drafting.ts";
 const scope = new paper.PaperScope();
 let ready = false;
 export type Analysis = {
@@ -12,6 +13,7 @@ export function analyzePath(
   scale: number,
   samples: number,
   gain: number,
+  viewport?: Bounds,
 ): Analysis {
   if (!ready) {
     scope.setup(new scope.Size(1, 1));
@@ -43,9 +45,9 @@ export function analyzePath(
         envelope += `${envelope ? "L" : "M"}${end.x} ${end.y}`;
       }
       if (i % Math.max(1, Math.round(count / 8)) === 0) {
-        const a = p.subtract(t.multiply(scale * 0.07)),
-          b = p.add(t.multiply(scale * 0.07));
-        result.spines.push(`M${a.x} ${a.y}L${b.x} ${b.y}`);
+        const frame=viewport?{x:viewport.x-viewport.width,y:viewport.y-viewport.height,width:viewport.width*3,height:viewport.height*3}:{x:-scale*8,y:-scale*8,width:scale*16,height:scale*16};
+        const extended=extendLine(p,t,frame);
+        if(extended)result.spines.push(`M${extended.a.x} ${extended.a.y}L${extended.b.x} ${extended.b.y}`);
         const r = 1 / k;
         if (
           Number.isFinite(r) &&

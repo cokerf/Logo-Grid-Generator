@@ -7,7 +7,7 @@ Designed and developed by [Coker Oluwafemi](https://cokeroluwafemi.com/).
 ## Generator
 
 - Reference-inspired split workspace: preview on the left, visual construction cards and controls on the right. Persistent light and dark interface modes, responsive layout, and Archivo typography.
-- Bézier traces, dimension guides, tangent spines, and local radius circles calculated from the actual paths using Paper.js. Tangent spines are local tangent guides, not an inferred medial-axis skeleton. Radius circles approximate local curvature; they are not a claim about how the logo was originally constructed.
+- Bézier traces, dimension guides, tangent spines, and local radius circles calculated from the actual paths using Paper.js. Tangent spines follow the local tangents and extend beyond the canvas in both directions; they are not an inferred medial-axis skeleton. Radius circles approximate local curvature; they are not a claim about how the logo was originally constructed.
 - Draggable paths and control handles, anchors, bounding boxes, grid snapping, alignment guides, ruler guides, undo, and redo.
 - Paper, Blueprint, and Ink palettes, customizable colors, stroke widths, anchor sizes, and square, column, or dot grids.
 - Construction preview with play/pause, scrubbing, and a clean-logo or construction-hold ending.
@@ -115,7 +115,7 @@ The Export tab includes Technical build (8s), Precision close-up (10s), Geometry
 
 ## Curated logo library
 
-The web app offers 11 selected WorldVectorLogo brands plus the bundled Coker logo. No random or search endpoints are used. Each brand click checks one SVG detail through `/.netlify/functions/worldvectorlogo`; the server accepts only the curated slugs in `services/logoCatalog.ts`. Successful responses are cached in the Netlify CDN (seven days), the warm function instance and the browser (seven days). The initial canvas loads the local Coker logo without any API call. All 11 curated brands also ship as verified snapshots retrieved through the configured API, so thumbnails and Shuffle logo & style need no requests. The library is expanded initially. Click a brand to load its snapshot immediately and check the API; the source label and status identify the brand. Invalid credentials now have an explicit status. The Ethereum entry was removed because its clipping/instances were incompatible with the importer. For Adidas, Honda and The North Face, only their known white full-canvas EPS backing rectangles are removed before loading; actual white logo details remain intact. This keeps background rectangles out of hatching and geometry measurements.
+The web app offers 11 selected WorldVectorLogo brands plus the bundled Coker logo. No random or search endpoints are used. Each brand click checks one SVG detail through `/.netlify/functions/worldvectorlogo`; the server accepts only the curated slugs in `services/logoCatalog.ts`. Successful responses are cached in the Netlify CDN (seven days), the warm function instance and the browser (seven days). The initial canvas chooses a curated logo and a coordinated colour drawing preset, shows its local snapshot immediately, and checks its SVG through the API. An unavailable provider or 429 silently restores the Coker fallback. A later response cannot overwrite artwork the user has already selected. All 11 curated brands also ship as verified snapshots retrieved through the configured API, so thumbnails and Shuffle logo & style need no requests. The library starts collapsed. Click a brand to load its snapshot immediately and check the API; the selected thumbnail identifies the brand. Provider status and path counts stay out of the interface. The Ethereum entry was removed because its clipping/instances were incompatible with the importer. For Adidas, Honda and The North Face, only their known white full-canvas EPS backing rectangles are removed before loading; actual white logo details remain intact. This keeps background rectangles out of hatching and geometry measurements.
 
 To connect your account, open the existing Netlify project's **Project configuration → Environment variables** and add `WORLDVECTORLOGO_API_KEY` with your key, enabled for the **Functions** scope and **Production** context. Save it, then redeploy. Do not prefix it with `VITE_`, commit it, or paste it into the generator. The function sends it to WorldVectorLogo using the Authorization Bearer header; the browser never receives it.
 
@@ -128,17 +128,17 @@ Logo fill and Original logo colours start off. Enable either in Style as needed.
 
 ### Shuffle controls
 
-**Shuffle logo & style** chooses a different logo from the 11 preloaded brands and Coker, then applies a coordinated palette, grid, geometry detail, stroke weights and motion preset. **Shuffle style** keeps the current SVG. Both keep output dimensions, fps, quality and ruler preferences; stroke weights adapt to the SVG size. Logo fill and Original logo colours remain off. Dense logos avoid the most crowded overlays. The randomizer has six contrasting palettes and stays inside the fixed curated pool; it never calls a random/search API or starts an automatic retry loop.
+**Shuffle logo & style** chooses a different logo from the 11 preloaded brands and Coker, then applies a coordinated palette, grid, geometry detail, stroke weights and motion preset. **Shuffle style** keeps the current SVG. Both keep output dimensions, fps, quality and ruler preferences; stroke weights adapt to the SVG size. Logo fill and Original logo colours remain off. Dense logos avoid the most crowded overlays. The randomizer has fourteen coordinated palettes and stays inside the fixed curated pool; it never calls a random/search API or starts an automatic retry loop.
 
 
 ## Reference drawing styles
 
-Open **Drawing** for four editable presets: **Plum hatch**, **Measured mono**, **Drafting paper**, and **Precision blue**. Presets apply to the loaded SVG; they never replace its geometry. Plum hatch uses diagonal path shading, dotted extensions and square anchor markers. Measured mono uses a filled mark, thin horizontal/vertical guides, hollow corner circles and proportion labels.
+Open **Drawing** for ten editable presets, including **Plum hatch**, **Measured mono**, **Drafting paper**, **Precision blue**, **Cobalt & butter**, **Coral & aubergine**, **Lagoon & mint**, **Orchid & grape**, **Citron measures**, and **Tomato measures**. Presets apply to the loaded SVG; they never replace its geometry. Plum hatch uses diagonal path shading, dotted extensions and square anchor markers. Measured mono uses a filled mark, thin horizontal/vertical guides, hollow corner circles and proportion labels.
 
 - Hatching is an SVG pattern inside each original path, with its fill rule preserved. Adjust angle, spacing, stroke weight, opacity and colour. Hatching is independent of the Logo fill switch and also works on live SVG text.
 - Extended guides can follow path extents or anchor positions. Choose orthogonal, diagonal or both directions, with solid, dashed or dotted strokes. Diagonals extend real straight edges; a custom angle is used for logos without straight diagonals. Guides intersect the full canvas boundary and are deduplicated/capped to avoid excessive geometry.
 - Anchor markers and corner markers support square, circle, cross and diamond shapes. Corner markers can be hollow or solid, with configurable clear space.
-- Proportion labels use `x = logo height / Units across logo height`. Divider positions are percentages of the actual logo width (for example `24,30`). The labels show measured ratios and do not imply the logo was originally designed with those proportions.
+- Proportion labels use `x = logo height / Units across logo height`. By default, disconnected contours are measured as components, hole contours are excluded, and aligned rows are handled separately. Guides and ratio labels follow real component edges and gaps, including compound-path wordmarks. Enclosing frames do not hide the spacing inside them. An optional percentage field overrides the detected dividers. The labels show measured ratios and do not imply the logo was originally designed with those proportions.
 
 All drawing layers are native SVG elements, so web SVG/PNG exports, construction previews and MP4 films share the same result. Hatching fades in with the artwork; guide lines, markers and measurements enter through the construction timeline. Motion preset selection preserves active Drawing layers and styling. These controls are also included in the bundled standalone generator. The native Affinity script retains its basic curve construction controls; use its bundled generator for these additional drawing styles and film exports.
 
@@ -149,3 +149,10 @@ These 1920 × 1080 images were exported directly from the web app using the cura
 ![Plum hatch: shaded paths, anchor markers and dotted extensions](public/examples/plum-hatch.png)
 
 ![Measured mono: solid artwork, proportion labels and hollow corner markers](public/examples/measured-mono.png)
+
+
+## Quick actions and interface
+
+Right-click the studio or canvas for shuffle, import, play/pause, inspect, grid, ruler and tangent toggles, theme switching, PNG/SVG/MP4 export, and the Coker fallback. The menu supports arrow keys, Enter and Escape, stays inside the window, and does not intercept text-field editing. A right-click never starts a path/handle drag. Interface panels, controls and menus have sharp corners. Provider messages, path/anchor counts and temporary style labels are not displayed.
+
+The Style tab has fourteen coordinated palettes with matched backgrounds, logo ink, hatch colour, guides and markers. Startup chooses a colourful drawing style; the light interface theme remains the default. Measured mono remains available as a deliberate monochrome option.

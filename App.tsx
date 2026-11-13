@@ -1,3 +1,9 @@
+import { QuickMenu,type QuickAction } from "./components/QuickMenu";
+import { drawingPreset,drawingPresets } from "./services/drafting";
+import { fetchCuratedLogo } from "./services/logoLibrary";
+import { logoCatalog } from "./services/logoCatalog";
+import { preloadedLogos } from "./services/preloadedLogos";
+import { shuffledSlug } from "./services/styleVariation";
 import { styleVariation } from "./services/styleVariation";
 import { motionPresets } from "./services/motion";
 import { LogoLibrary } from "./components/LogoLibrary";
@@ -137,6 +143,9 @@ export default function App() {
       transparent: false,
       ending: "hold",
     });
+  const [quickMenu,setQuickMenu]=useState<{x:number;y:number}|null>(null);
+  const closeQuickMenu=useCallback(()=>setQuickMenu(null),[]);
+  const loadSequence=useRef(0);
   const [error, setError] = useState(""),
     [fileName, setFileName] = useState("Example / coker-logo.svg"),
     [guides, setGuides] = useState<Guide[]>([]),
@@ -191,6 +200,7 @@ export default function App() {
           await document.fonts.ready;
         }
         const parsed = parseSVG(source, fontRef.current?.family);
+        loadSequence.current++;
         reset(parsed);
         setLive(null);
         setSelected(null);
@@ -210,7 +220,20 @@ export default function App() {
     [reset],
   );
   useEffect(() => {
-    loadSVG(demo, "Example / coker-logo.svg");
+    if(isPlugin){void loadSVG(demo,"Example / coker-logo.svg");return;}
+    const controller=new AbortController();
+    const logo=logoCatalog[Math.floor(Math.random()*logoCatalog.length)],snapshot=preloadedLogos[logo.slug];
+    const run=async()=>{
+      const ok=await loadSVG(snapshot,`WorldVectorLogo / ${logo.name}`);
+      if(controller.signal.aborted)return;if(!ok){await loadSVG(demo,"Example / coker-logo.svg");return;}
+      const parsed=parseSVG(snapshot),pool=drawingPresets.filter(p=>['cobalt','coral','lagoon','orchid'].includes(p.id)),preset=pool[Math.floor(Math.random()*pool.length)];
+      const styled=drawingPreset(preset.id,initial,analysis,visibility,Math.max(parsed.width,parsed.height));
+      if(parsed.paths.reduce((n,p)=>n+p.points.length,0)>250)styled.visibility.anchors=false;
+      setCustomization(styled.customization);setAnalysis(styled.analysis);setVisibility(styled.visibility);
+      const version=loadSequence.current;
+      try{const fresh=await fetchCuratedLogo(logo.slug,controller.signal,true);if(controller.signal.aborted||version!==loadSequence.current)return;if(fresh!==snapshot&&!await loadSVG(fresh,`WorldVectorLogo / ${logo.name}`))await loadSVG(demo,"Example / coker-logo.svg");}
+      catch{if(!controller.signal.aborted&&version===loadSequence.current){await loadSVG(demo,"Example / coker-logo.svg");setVisibility(current=>({...current,anchors:false,handles:false}));}}
+    };void run();return()=>controller.abort();
   }, [loadSVG]);
   useEffect(() => {
     if (!isPlugin) return;
@@ -415,12 +438,32 @@ export default function App() {
     setSettings(current=>({...current,motion:preset.id,duration:preset.duration,ending:preset.id==='minimal'?'clean':'hold'}));
     setTime(0);setPlaying(false);setMode("inspect");setNotice(`${variation.name} · ${preset.name}`);
   };
+  const shuffleLogo=async()=>{
+    const current=logoCatalog.find(logo=>fileName===`WorldVectorLogo / ${logo.name}`)?.slug||'coker';
+    const slug=shuffledSlug([...logoCatalog.map(logo=>logo.slug),'coker'],current),logo=logoCatalog.find(logo=>logo.slug===slug),svg=slug==='coker'?demo:preloadedLogos[slug];
+    if(await loadSVG(svg,logo?`WorldVectorLogo / ${logo.name}`:"Example / coker-logo.svg"))shuffleStyle(parseSVG(svg,fontRef.current?.family));
+  };
+  const menuActions:QuickAction[]=[
+    {label:'Shuffle logo & style',run:()=>void shuffleLogo()},
+    {label:'Shuffle style',run:()=>shuffleStyle()},
+    {label:'Import SVG',run:()=>fileRef.current?.click()},
+    {label:playing?'Pause':'Play construction',breakBefore:true,run:()=>{setMode('construct');if(time>=1)setTime(0);setPlaying(!playing);}},
+    {label:'Inspect',run:()=>{setMode('inspect');setPlaying(false);}},
+    {label:'Canvas grid',breakBefore:true,checked:visibility.grid,run:()=>setVisibility({...visibility,grid:!visibility.grid})},
+    {label:'Rulers',checked:visibility.rulers,run:()=>setVisibility({...visibility,rulers:!visibility.rulers})},
+    {label:'Tangent spines',checked:analysis.spines,run:()=>setAnalysis({...analysis,spines:!analysis.spines})},
+    {label:theme==='light'?'Dark mode':'Light mode',run:()=>setTheme(theme==='light'?'dark':'light')},
+    {label:'Export PNG',breakBefore:true,disabled:!displayed,run:()=>void onExport('png')},
+    {label:'Export SVG',disabled:!displayed,run:()=>void onExport('svg')},
+    {label:'Export MP4',disabled:!displayed,run:()=>void onExport('mp4')},
+    {label:'Restore Coker logo',breakBefore:true,run:()=>void loadSVG(demo,"Example / coker-logo.svg")},
+  ];
   const previewRevision = React.useMemo(
     () => ({ displayed, analysis, customization, visibility, font }),
     [displayed, analysis, customization, visibility, font],
   );
   return (
-    <div className={`studio ${isPlugin ? "plugin" : ""}`} data-theme={theme}>
+    <div className={`studio ${isPlugin ? "plugin" : ""}`} data-theme={theme} onContextMenu={e=>{if((e.target as HTMLElement).closest("input,textarea,select,[contenteditable]"))return;e.preventDefault();if(exportProgress===null)setQuickMenu({x:e.clientX,y:e.clientY});}}>
       <header className="topbar">
         <svg
           className="appmark"
@@ -508,7 +551,7 @@ export default function App() {
           }
           logoScale={Math.max(displayed?.width||1000,displayed?.height||1000)}
           onInspect={()=>{setMode("inspect");setPlaying(false);}}
-          logoLibrary={<LogoLibrary currentName={fileName} onStyle={() => shuffleStyle()} onShuffleLoad={async (svg,name) => { const success=await loadSVG(svg,name); if(success)shuffleStyle(parseSVG(svg,fontRef.current?.family)); return success; }} onLoad={loadSVG} onFallback={(message) => { void loadSVG(demo, "Example / coker-logo.svg"); setNotice(message); }} />}
+          logoLibrary={<LogoLibrary onShuffle={()=>void shuffleLogo()} currentName={fileName} onStyle={() => shuffleStyle()} onShuffleLoad={async (svg,name) => { const success=await loadSVG(svg,name); if(success)shuffleStyle(parseSVG(svg,fontRef.current?.family)); return success; }} onLoad={loadSVG} onFallback={(message) => { void loadSVG(demo, "Example / coker-logo.svg"); setNotice(message); }} />}
           open={panel}
           visibility={visibility}
           setVisibility={setVisibility}
@@ -690,20 +733,10 @@ export default function App() {
               )}
             </div>
           </div>
-          <footer className="stage-footer">
-            <span>
-              {notice ||
-                `${displayed?.paths.reduce((n, p) => n + p.points.length, 0) || 0} anchors · ${displayed?.paths.reduce((n, p) => n + p.handles.length, 0) || 0} handles`}
-            </span>
-            <span>
-              {settings.width} × {settings.height} px{" "}
-              {mode === "construct"
-                ? `· ${(time * settings.duration).toFixed(1)}s / ${settings.duration}s`
-                : ""}
-            </span>
-          </footer>
+
         </main>
       </div>
+      {quickMenu&&<QuickMenu point={quickMenu} actions={menuActions} onClose={closeQuickMenu}/>}
       {error && (
         <div className="error-toast" role="alert">
           {error}
@@ -721,14 +754,10 @@ export default function App() {
         >
           <div className="progress-card">
             <h2>Building your film</h2>
-            <p>
-              {settings.width} × {settings.height} · {settings.fps} fps · H.264
-              MP4
-            </p>
+            <p>{settings.width} × {settings.height} · {settings.fps} fps</p>
             <progress max="1" value={exportProgress} />
             <p>
-              {Math.round(exportProgress * 100)}% · Rendering every frame in
-              order
+              {Math.round(exportProgress * 100)}%
             </p>
             <button
               autoFocus

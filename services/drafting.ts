@@ -1,3 +1,4 @@
+import {measureComponents,runBoundaries} from "./measurements.ts";
 import type {DraftingOptions,ParsedSVG,Point,CustomizationOptions} from '../types.ts';
 import type {AnalysisOptions} from '../components/AnalysisLayers.tsx';
 import type {Visibility} from '../components/ControlPanel.tsx';
@@ -35,9 +36,12 @@ export function draftingLines(data:ParsedSVG,viewport:Bounds,o:DraftingOptions):
     const points=o.guideSource==='anchors'?data.paths.flatMap(p=>p.points):data.paths.flatMap(p=>p.boundingBox?[{x:p.boundingBox.x,y:p.boundingBox.y},{x:p.boundingBox.x+p.boundingBox.width,y:p.boundingBox.y+p.boundingBox.height}]:[]);
     points.push({x:bounds.x,y:bounds.y},{x:bounds.x+bounds.width,y:bounds.y+bounds.height});
     const margin=bounds.height*o.clearspace;
-    const xs=[...points.map(p=>p.x),bounds.x-margin,bounds.x+bounds.width+margin,...(o.proportions?measurementSplits(o.measureSplits).map(n=>bounds.x+bounds.width*n/100):[])],ys=[...points.map(p=>p.y),bounds.y-margin,bounds.y+bounds.height+margin];
-    for(const x of sparsePositions(xs,scale*.006,limit))result.push({a:{x,y:viewport.y},b:{x,y:viewport.y+viewport.height}});
-    for(const y of sparsePositions(ys,scale*.006,limit))result.push({a:{x:viewport.x,y},b:{x:viewport.x+viewport.width,y}});
+    const measured=o.proportions?measureComponents(data):null;
+    const autoX=measured?measured.xGuides:[],autoY=measured?measured.yGuides:[];
+    const xs=[...(o.proportions?autoX:points.map(p=>p.x)),bounds.x-margin,bounds.x+bounds.width+margin,...(o.proportions?(o.measureSplits.trim()?measurementSplits(o.measureSplits).map(n=>bounds.x+bounds.width*n/100):autoX):[])],ys=[...(o.proportions?autoY:points.map(p=>p.y)),bounds.y-margin,bounds.y+bounds.height+margin,...autoY];
+    const positions=(values:number[])=>o.proportions?sparsePositions(values,scale*1e-7,256):sparsePositions(values,scale*.006,limit);
+    for(const x of positions(xs))result.push({a:{x,y:viewport.y},b:{x,y:viewport.y+viewport.height}});
+    for(const y of positions(ys))result.push({a:{x:viewport.x,y},b:{x:viewport.x+viewport.width,y}});
   }
   if(o.guideAxes!=='orthogonal'){
     const candidates:{p:Point;d:Point}[]=[];
@@ -73,9 +77,15 @@ export const drawingPresets=[
   {id:'measured',name:'Measured mono',description:'Proportion labels, fine guides and hollow circles.',background:'#050505',ink:'#ffffff',accent:'#b9bcc4'},
   {id:'paper',name:'Drafting paper',description:'Warm paper, graphite hatching and cross markers.',background:'#f4f1e8',ink:'#343a35',accent:'#637e5b'},
   {id:'blueprint',name:'Precision blue',description:'A blue field, dashed guides and diamond nodes.',background:'#102c49',ink:'#d2eeff',accent:'#80c8f3'},
+  {id:'cobalt',name:'Cobalt & butter',description:'Electric blue, warm ivory hatching and golden guides.',background:'#2346d8',ink:'#fff5d9',accent:'#ffdc69'},
+  {id:'coral',name:'Coral & aubergine',description:'A coral field with deep plum linework and markers.',background:'#ff795f',ink:'#3c1730',accent:'#671f43'},
+  {id:'lagoon',name:'Lagoon & mint',description:'Deep teal, cream shading and pale mint geometry.',background:'#075552',ink:'#f6e7bd',accent:'#9fe5cf'},
+  {id:'orchid',name:'Orchid & grape',description:'Soft orchid with grape outlines and purple guides.',background:'#e5b6f3',ink:'#41204f',accent:'#673596'},
+  {id:'citron',name:'Citron measures',description:'Lime ground, forest green proportions and gap guides.',background:'#d8ef65',ink:'#173d34',accent:'#326b51'},
+  {id:'tomato',name:'Tomato measures',description:'Rich red with warm cream artwork and golden measures.',background:'#b62e3c',ink:'#fff3da',accent:'#ffd578'},
 ] as const;
 export function drawingPreset(id:string,c:CustomizationOptions,a:AnalysisOptions,v:Visibility,scale:number) {
-  const preset=drawingPresets.find(p=>p.id===id)||drawingPresets[0],unit=Math.max(scale,1)/1000,measured=preset.id==='measured';
-  const drafting:DraftingOptions={...defaultDrafting,presetId:preset.id,hatch:!measured,hatchColor:preset.ink,hatchSpacing:measured?7:preset.id==='paper'?6:7,guides:true,guideAxes:measured?'orthogonal':'both',guideColor:preset.accent,guideStyle:preset.id==='blueprint'?'dashed':'dotted',guideLimit:18,cornerMarkers:measured||preset.id==='paper',cornerShape:preset.id==='paper'?'cross':'circle',cornerColor:preset.accent,proportions:measured,measureSplits:measured?'24,30':'',guideOpacity:measured?.3:.24};
+  const preset=drawingPresets.find(p=>p.id===id)||drawingPresets[0],unit=Math.max(scale,1)/1000,measured=['measured','citron','tomato'].includes(preset.id);
+  const drafting:DraftingOptions={...defaultDrafting,presetId:preset.id,hatch:!measured,hatchColor:preset.ink,hatchSpacing:measured?7:preset.id==='paper'?6:7,guides:true,guideAxes:measured?'orthogonal':'both',guideColor:preset.accent,guideStyle:preset.id==='blueprint'?'dashed':'dotted',guideLimit:18,cornerMarkers:measured||preset.id==='paper',cornerShape:preset.id==='paper'?'cross':'circle',cornerColor:preset.accent,proportions:measured,measureSplits:'',guideOpacity:measured?.3:.24};
   return {customization:{...c,drafting,canvasBackground:preset.background,useOriginalColors:false,showFill:measured,fillColor:preset.ink,path:{stroke:preset.ink,strokeWidth:measured?.45*unit:.85*unit},anchors:{...c.anchors,color:preset.ink,size:4*unit,shape:preset.id==='blueprint'?'diamond' as const:preset.id==='paper'?'cross' as const:'square' as const},handles:{color:preset.accent,width:.6*unit},rulers:{background:preset.background,text:preset.ink+'99'}},analysis:{...a,curves:false,dimensions:false,spines:false,circles:false,color:preset.accent},visibility:{...v,grid:false,anchors:!measured,handles:false,outlines:false,alignment:false,elementGuides:false}};
 }

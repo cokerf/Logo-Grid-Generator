@@ -491,6 +491,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     pathIndex: number,
     index: number,
   ) => {
+    if(e.button!==0)return;
     e.stopPropagation();
     setSelectedPathIndex(pathIndex);
     setDragState({ type, index, pathIndex, startPoint: getSVGPoint(e) });
@@ -502,6 +503,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     id: string,
     orientation: "horizontal" | "vertical",
   ) => {
+    if(e.button!==0)return;
     e.stopPropagation();
     setDragState({
       type: "guide",
@@ -515,6 +517,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     e: MouseEvent,
     orientation: "horizontal" | "vertical",
   ) => {
+    if(e.button!==0)return;
     e.stopPropagation();
     setDragState({ type: "new-guide", orientation, id: null });
   };
@@ -829,7 +832,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           {showGridlines && (
             <Grid viewBox={viewBox} options={customization.gridlines} />
           )}
-          <AnalysisLayers data={svgData} options={analysis} />
+          <AnalysisLayers data={svgData} options={analysis} viewport={viewBox} />
         </svg>
       </div>
       {guides.length > 0 && (

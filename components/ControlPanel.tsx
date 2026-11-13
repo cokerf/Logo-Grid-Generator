@@ -1,4 +1,5 @@
 import { motionPresets, type MotionPreset } from "../services/motion";
+import {studioPalettes} from "../services/styleVariation";
 import { DrawingPanel } from "./DrawingPanel";
 import { ConstructionIcon } from "./ConstructionIcon";
 import React, { useState } from "react";
@@ -114,13 +115,6 @@ export function ControlPanel(p: Props) {
               Create video
             </button>
           </div>
-          <div className="file-meta">
-            <span title={p.fileName}>{p.fileName}</span>
-            <span>
-              {p.pathCount} paths
-              {p.textCount ? ` · ${p.textCount} live text` : ""}
-            </span>
-          </div>
           {p.logoLibrary}
           <div className="layer-gallery" aria-label="Construction layers">
             {(
@@ -211,8 +205,7 @@ export function ControlPanel(p: Props) {
                 ),
               )}
               <p className="hint">
-                Dimensions and tangents calculated from your vector paths with
-                Paper.js.
+                Adjust the guides to suit your composition.
               </p>
             </>
           )}
@@ -223,12 +216,8 @@ export function ControlPanel(p: Props) {
                 <span>APPEARANCE</span>
                 <span>02</span>
               </div>
-              <div className="button-row">
-                {[
-                  ["Paper", "#f2f1eb", "#202822", "#597e45"],
-                  ["Blueprint", "#122b47", "#b4def5", "#7eb6e1"],
-                  ["Ink", "#161c18", "#d8e2d2", "#c6f566"],
-                ].map(([name, bg, fg, accent]) => (
+              <div className="palette-presets">
+                {studioPalettes.map(({name,background:bg,ink:fg,accent}) => (
                   <button
                     key={name}
                     onClick={() => {
@@ -236,7 +225,8 @@ export function ControlPanel(p: Props) {
                         ...c,
                         canvasBackground: bg,
                         useOriginalColors: false,
-                        fillColor: fg + "22",
+                        ...(c.drafting?{drafting:{...c.drafting,presetId:undefined,hatchColor:fg,guideColor:accent,cornerColor:accent}}:{}),
+                        fillColor: c.showFill ? fg : fg + "22",
                         path: { ...c.path, stroke: fg },
                         anchors: { ...c.anchors, color: accent },
                         handles: { ...c.handles, color: accent },
@@ -535,8 +525,7 @@ export function ControlPanel(p: Props) {
                     </select>,
                   )}
                   <p className="hint">
-                    Frame-by-frame H.264 encoding, with fast-start MP4 playback.
-                    The export can take longer than the video itself.
+                    Rendering may take longer than the finished video.
                   </p>
                 </>
               ) : (
@@ -707,7 +696,7 @@ export function ControlPanel(p: Props) {
             Figma plugin
           </a>
         </span>
-        <span>v2.0</span>
+        
       </footer>
     </aside>
   );

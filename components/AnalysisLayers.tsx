@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { analyzePath } from "../services/geometry";
+import type { Bounds } from "../services/drafting";
 import type { ParsedSVG } from "../types";
 export interface AnalysisOptions {
   curves: boolean;
@@ -13,16 +14,18 @@ export interface AnalysisOptions {
 export function AnalysisLayers({
   data,
   options,
+  viewport,
 }: {
   data: ParsedSVG;
   options: AnalysisOptions;
+  viewport: Bounds;
 }) {
   const scale = Math.max(data.width, data.height);
   const analysis = useMemo(
     () =>
       options.spines || options.circles
         ? data.paths.map((p) =>
-            analyzePath(p.d, scale, options.samples, options.gain),
+            analyzePath(p.d, scale, options.samples, options.gain,viewport),
           )
         : [],
     [
@@ -32,6 +35,7 @@ export function AnalysisLayers({
       options.circles,
       options.samples,
       options.gain,
+      viewport,
     ],
   );
   return (
@@ -67,6 +71,7 @@ export function AnalysisLayers({
       {options.spines && (
         <g
           data-stage="1"
+          data-tangent-spines="true"
           strokeDasharray={`${scale * 0.007} ${scale * 0.004}`}
           opacity=".6"
         >

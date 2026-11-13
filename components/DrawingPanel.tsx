@@ -5,7 +5,7 @@ import type {Visibility} from './ControlPanel';
 import {defaultDrafting,drawingPreset,drawingPresets} from '../services/drafting';
 function PresetThumb({preset}:{preset:typeof drawingPresets[number]}){
   const id='thumb-'+useId().replace(/[^\w-]/g,'');
-  const measured=preset.id==='measured';
+  const measured=['measured','citron','tomato'].includes(preset.id);
   return <svg viewBox="0 0 160 78" aria-hidden="true" style={{background:preset.background}}><defs><pattern id={id} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(-55)"><path d="M0 0H4" stroke={preset.ink} strokeWidth=".45"/></pattern></defs><g stroke={preset.accent} strokeWidth=".4" strokeDasharray={preset.id==='blueprint'?'3 2':'1 2'} opacity=".5"><path d="M25 0V78M64 0V78M105 0V78M136 0V78M0 25H160M0 55H160"/>{!measured&&<path d="M0 65L60 0M33 78L103 0M80 78L150 0"/>}</g><path d="M26 54L48 25H72L50 54ZM64 54L86 25H110L88 54ZM102 54L124 25H136L115 54Z" fill={measured?preset.ink:`url(#${id})`} stroke={preset.ink} strokeWidth=".65"/>{measured?<g stroke={preset.ink} strokeWidth=".4"><path d="M26 14H136M26 11V17M64 11V17M72 11V17M136 11V17"/><g fill={preset.ink} stroke="none" fontSize="6" textAnchor="middle"><text x="45" y="10">3.8x</text><text x="69" y="10">1x</text><text x="105" y="10">6.4x</text></g></g>:<g fill={preset.ink}>{[[26,54],[48,25],[72,25],[50,54],[86,25],[110,25],[136,25],[115,54]].map(([x,y],i)=><rect key={i} x={x-1.3} y={y-1.3} width="2.6" height="2.6"/>)}</g>}</svg>;
 }
 export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:CustomizationOptions;a:AnalysisOptions;v:Visibility;scale:number;setC:(c:CustomizationOptions)=>void;setA:(a:AnalysisOptions)=>void;setV:(v:Visibility)=>void;onInspect:()=>void}){
@@ -21,7 +21,7 @@ export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:Customiza
     <div className="drawing-group"><div className="section-title"><span>Shading</span></div>
       {check('Diagonal hatch fill',d.hatch,value=>update({hatch:value}))}
       {d.hatch&&<>{range('Hatch angle','hatchAngle',-90,90,1)}{range('Hatch spacing','hatchSpacing',3,24,.5)}{range('Hatch weight','hatchWidth',.2,2,.1)}{range('Hatch opacity','hatchOpacity',.1,1,.05)}{color('Hatch colour','hatchColor')}</>}
-      <p className="hint">Hatching fills the actual SVG paths and preserves their holes. It can be enabled independently of Logo fill.</p>
+      <p className="hint">Shade the logo while keeping its cutouts clear. Hatching works independently of Logo fill.</p>
     </div>
     <div className="drawing-group"><div className="section-title"><span>Construction lines</span></div>
       {check('Extended construction guides',d.guides,value=>update({guides:value}))}
@@ -46,9 +46,9 @@ export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:Customiza
       {check('Proportion measurements',d.proportions,value=>update({proportions:value}))}
       {d.proportions&&<>
         {field('Units across logo height',<input type="number" min=".1" max="100" step=".1" value={d.heightUnits} onChange={e=>update({heightUnits:Math.max(.1,Math.min(100,Number(e.target.value)||.1))})}/>)}
-        {field('Divider positions (%)',<input className="draft-splits" type="text" placeholder="24, 30" value={d.measureSplits} onChange={e=>update({measureSplits:e.target.value.slice(0,80)})}/>)}
+        {field('Divider positions (%)',<input className="draft-splits" type="text" placeholder="Auto from logo gaps" value={d.measureSplits} onChange={e=>update({measureSplits:e.target.value.slice(0,80)})}/>)}
         {range('Measurement label size','labelSize',8,22)}
-        <p className="hint">One x is logo height ÷ {d.heightUnits}. Dividers use percentages of the logo width. Labels show measured ratios, rather than claiming an original design system.</p>
+        <p className="hint">One x is logo height ÷ {d.heightUnits}. Guides follow the actual components and gaps. Leave dividers blank for automatic measurement, or enter percentages to override.</p>
       </>}
     </div>
     <button className="secondary drawing-reset" onClick={()=>{setC({...c,drafting:{...defaultDrafting}});setV({...v,anchors:false});}}>Reset drawing overlays</button>
