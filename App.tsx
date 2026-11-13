@@ -1,3 +1,5 @@
+import {renderToStaticMarkup} from 'react-dom/server';
+import {prepareMorph,morphProgress,defaultMorph,type MorphOptions} from './services/morph';
 import { QuickMenu,type QuickAction } from "./components/QuickMenu";
 import { drawingPreset,drawingPresets } from "./services/drafting";
 import { fetchCuratedLogo } from "./services/logoLibrary";
@@ -152,7 +154,7 @@ export default function App() {
     [selected, setSelected] = useState<number | null>(null),
     [dragOver, setDragOver] = useState(false),
     [panel, setPanel] = useState(false);
-  const [mode, setMode] = useState<"inspect" | "construct">("inspect"),
+  const [mode, setMode] = useState<"inspect" | "morph" | "construct">("inspect"),
     [playing, setPlaying] = useState(false),
     [time, setTime] = useState(0),
     [exportProgress, setExportProgress] = useState<number | null>(null),
@@ -162,6 +164,15 @@ export default function App() {
     abortRef = useRef<AbortController | null>(null),
     sourceNode = useRef<string | null>(null);
   const displayed = live || data;
+  const [morphFrom,setMorphFrom]=useState<ParsedSVG|null>(null),[morphTo,setMorphTo]=useState<ParsedSVG|null>(null);
+  const [morphNames,setMorphNames]=useState(['Current logo','Choose a second logo']);
+  const [morphOptions,setMorphOptions]=useState<MorphOptions>(defaultMorph);
+  const morphInputs=[useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null)];
+  const morphModel=React.useMemo(()=>{if(!morphFrom||!morphTo)return null;try{return prepareMorph(morphFrom,morphTo);}catch{return null;}},[morphFrom,morphTo]);
+  const morphData=React.useMemo(()=>morphModel?.(morphProgress(time,morphOptions)),[morphModel,time,morphOptions]);
+  const enterMorph=()=>{if(!morphFrom&&displayed){setMorphFrom(structuredClone(displayed));setMorphNames(n=>[fileName.split(' / ').pop()||'First logo',n[1]]);}setMode('morph');setPlaying(false);setTime(0);};
+  const importMorph=async(file:File,index:number)=>{try{if(file.size>5_000_000)throw new Error('Please use an SVG smaller than 5 MB.');const parsed=parseSVG(await file.text(),fontRef.current?.family);(index===0?setMorphFrom:setMorphTo)(parsed);setMorphNames(n=>n.map((v,i)=>i===index?file.name:v));setTime(0);setPlaying(false);setError('');}catch(e){setError((e as Error).message);}};
+
   const stageRef = useRef<HTMLDivElement>(null);
   const [board, setBoard] = useState({ width: 600, height: 750 });
   useEffect(() => {
@@ -275,7 +286,7 @@ export default function App() {
       }
       if (e.code === "Space") {
         e.preventDefault();
-        setMode("construct");
+        setMode(current=>current==='morph'?'morph':'construct');
         setPlaying((p) => !p);
       }
     };
@@ -361,6 +372,7 @@ export default function App() {
     );
   const onExport = async (format: "svg" | "png" | "mp4") => {
     if (!svgRef.current) return;
+    if(mode==='morph'&&!morphModel){setError('Choose two SVG logos before exporting a morph.');return;}
     setError("");
     try {
       if (format === "svg")
@@ -396,8 +408,13 @@ export default function App() {
             customization.canvasBackground,
             setExportProgress,
             abortRef.current.signal,
+            mode==='morph'&&morphModel ? (progress)=>{
+              const markup=renderToStaticMarkup(renderCanvas(morphModel(morphProgress(progress,morphOptions))));
+              const svg=new DOMParser().parseFromString(markup,'image/svg+xml').querySelector('svg');
+              if(!svg)throw new Error('Unable to render morph frame.');return svg as SVGSVGElement;
+            }:undefined,
           ),
-          "logo-construction.mp4",
+          mode==='morph'?"logo-morph.mp4":"logo-construction.mp4",
         );
       }
     } catch (e) {
@@ -447,7 +464,8 @@ export default function App() {
     {label:'Shuffle logo & style',run:()=>void shuffleLogo()},
     {label:'Shuffle style',run:()=>shuffleStyle()},
     {label:'Import SVG',run:()=>fileRef.current?.click()},
-    {label:playing?'Pause':'Play construction',breakBefore:true,run:()=>{setMode('construct');if(time>=1)setTime(0);setPlaying(!playing);}},
+    {label:playing?'Pause':mode==='morph'?'Play morph':'Play construction',breakBefore:true,run:()=>{setMode(mode==='morph'?'morph':'construct');if(time>=1)setTime(0);setPlaying(!playing);}},
+    {label:'Morph',run:enterMorph},
     {label:'Inspect',run:()=>{setMode('inspect');setPlaying(false);}},
     {label:'Canvas grid',breakBefore:true,checked:visibility.grid,run:()=>setVisibility({...visibility,grid:!visibility.grid})},
     {label:'Rulers',checked:visibility.rulers,run:()=>setVisibility({...visibility,rulers:!visibility.rulers})},
@@ -462,6 +480,55 @@ export default function App() {
     () => ({ displayed, analysis, customization, visibility, font }),
     [displayed, analysis, customization, visibility, font],
   );
+  const renderCanvas=(frameData:ParsedSVG|null)=> (<Canvas
+                  svgData={frameData}
+                  canvasAspect={
+                    Math.max(settings.width, 1) / Math.max(settings.height, 1)
+                  }
+                  fontCSS={bundledFontCSS + (font?.css || "")}
+                  svgRef={svgRef}
+                  analysis={analysis}
+                  showAnchors={visibility.anchors}
+                  showHandles={visibility.handles}
+                  showOutlines={visibility.outlines}
+                  showGridlines={visibility.grid}
+                  showElementGuides={visibility.elementGuides}
+                  showAlignmentGuides={visibility.alignment}
+                  showRulers={visibility.rulers}
+                  guides={guides}
+                  onAddGuide={(orientation, position, id) =>
+                    setGuides((g) => [
+                      ...g,
+                      { id: id || crypto.randomUUID(), orientation, position },
+                    ])
+                  }
+                  onUpdateGuide={(id, position) =>
+                    setGuides((g) =>
+                      g.map((v) => (v.id === id ? { ...v, position } : v)),
+                    )
+                  }
+                  onRemoveGuide={(id) =>
+                    setGuides((g) => g.filter((v) => v.id !== id))
+                  }
+                  error={null}
+                  customization={customization}
+                  onHandleMove={moveHandle}
+                  onPathMove={movePath}
+                  snapToGrid={visibility.snap}
+                  selectedPathIndex={mode==='morph'?null:selected}
+                  setSelectedPathIndex={setSelected}
+                  onDragStart={() => {
+                    if (data) setLive(structuredClone(data));
+                  }}
+                  onDragEnd={() => {
+                    if (live) setData(live);
+                    setLive(null);
+                  }}
+                  onFileUpload={upload}
+                  onUploadClick={() => fileRef.current?.click()}
+                  isDraggingOver={dragOver}
+                  setIsDraggingOver={setDragOver}
+                />);
   return (
     <div className={`studio ${isPlugin ? "plugin" : ""}`} data-theme={theme} onContextMenu={e=>{if((e.target as HTMLElement).closest("input,textarea,select,[contenteditable]"))return;e.preventDefault();if(exportProgress===null)setQuickMenu({x:e.clientX,y:e.clientY});}}>
       <header className="topbar">
@@ -570,7 +637,7 @@ export default function App() {
           plugin={isPlugin}
           onInsert={insert}
           onPreviewMotion={() => {
-            setMode("construct");
+            setMode(current=>current==='morph'?'morph':'construct');
             setTime(0);
             setPlaying(true);
           }}
@@ -594,6 +661,7 @@ export default function App() {
               >
                 Inspect
               </button>
+              <button onClick={enterMorph} className={mode==='morph'?'selected-mode':''}>Morph</button>
               <button
                 onClick={() => {
                   setMode("construct");
@@ -605,13 +673,13 @@ export default function App() {
               </button>
             </div>
             <div>
-              {mode === "construct" ? (
+              {mode !== "inspect" ? (
                 <>
-                  <PlaybackButton playing={playing} progress={time} onClick={() => { if(time>=1)setTime(0); setPlaying(!playing); }} />
+                  <PlaybackButton playing={playing} progress={time} onClick={() => { if(mode==='morph'&&!morphModel)return; if(time>=1)setTime(0); setPlaying(!playing); }} />
                   <span className="timecode">{(time*settings.duration).toFixed(1)}<span> / {settings.duration}s</span></span>
                   <input
                     className="timeline"
-                    aria-label="Construction progress"
+                    aria-label={mode==='morph'?'Morph progress':'Construction progress'}
                     type="range"
                     min="0"
                     max="1"
@@ -635,6 +703,21 @@ export default function App() {
               )}
             </div>
           </div>
+          {mode==='morph'&&<div className="morph-controls" aria-label="Morph controls">
+            <div className="morph-presets" aria-label="Morph animation presets">{[{name:'Evolution',duration:8,easing:'cinematic',direction:'forward',hold:.12},{name:'Slow study',duration:12,easing:'smooth',direction:'forward',hold:.18},{name:'Continuous loop',duration:10,easing:'smooth',direction:'roundtrip',hold:.08}].map(p=><button key={p.name} onClick={()=>{setMorphOptions({easing:p.easing as MorphOptions['easing'],direction:p.direction as MorphOptions['direction'],hold:p.hold});setSettings({...settings,duration:p.duration});setTime(0);setPlaying(false);}}>{p.name}</button>)}</div>
+            {[0,1].map(index=><div className="morph-source" key={index}>
+              <span>{index===0?'From':'To'}</span><button onClick={()=>morphInputs[index].current?.click()}>{morphNames[index]}</button>
+              <input hidden ref={morphInputs[index]} type="file" accept=".svg,image/svg+xml" onChange={e=>{const file=e.target.files?.[0];if(file)void importMorph(file,index);e.target.value='';}}/>
+              <select aria-label={index===0?'First morph logo':'Second morph logo'} value="" onChange={e=>{if(!e.target.value)return;const logo=logoCatalog.find(l=>l.slug===e.target.value)!;const parsed=parseSVG(preloadedLogos[logo.slug]);(index===0?setMorphFrom:setMorphTo)(parsed);setMorphNames(n=>n.map((v,i)=>i===index?logo.name:v));setPlaying(false);setTime(0);}}><option value="">Choose a logo</option>{logoCatalog.map(l=><option value={l.slug} key={l.slug}>{l.name}</option>)}</select>
+            </div>)}
+            <button disabled={!morphFrom||!morphTo} onClick={()=>{setMorphFrom(morphTo);setMorphTo(morphFrom);setMorphNames([...morphNames].reverse());setTime(0);setPlaying(false);}}>Swap</button>
+            <label>Easing<select value={morphOptions.easing} onChange={e=>setMorphOptions({...morphOptions,easing:e.target.value as MorphOptions['easing']})}><option value="cinematic">Cinematic</option><option value="smooth">Smooth</option><option value="linear">Linear</option></select></label>
+            <label>Direction<select value={morphOptions.direction} onChange={e=>setMorphOptions({...morphOptions,direction:e.target.value as MorphOptions['direction']})}><option value="forward">From → To</option><option value="reverse">To → From</option><option value="roundtrip">Round trip</option></select></label>
+            <label>Duration (s)<input type="number" min="3" max="30" value={settings.duration} onChange={e=>setSettings({...settings,duration:Math.max(3,Math.min(30,Number(e.target.value)||3))})}/></label>
+            <label>End hold (%)<input type="number" min="0" max="30" value={Math.round(morphOptions.hold*100)} onChange={e=>setMorphOptions({...morphOptions,hold:Math.max(0,Math.min(.3,Number(e.target.value)/100))})}/></label>
+            {(morphFrom?.texts?.length||morphTo?.texts?.length)?<p className="morph-hint">Live lettering dissolves between logos. Expand text to paths for a shape morph.</p>:null}
+            <button className="primary" disabled={!morphModel} onClick={()=>void onExport('mp4')}>Export morph</button>
+          </div>}
           <div className="aspect-presets" aria-label="Canvas proportions">
             {[
               [1080, 1080, "1:1"],
@@ -670,57 +753,10 @@ export default function App() {
                 style={{
                   height: "100%",
                   visibility: mode === "construct" ? "hidden" : "visible",
+                  pointerEvents: mode==='morph'?'none':undefined,
                 }}
               >
-                <Canvas
-                  svgData={displayed}
-                  canvasAspect={
-                    Math.max(settings.width, 1) / Math.max(settings.height, 1)
-                  }
-                  fontCSS={bundledFontCSS + (font?.css || "")}
-                  svgRef={svgRef}
-                  analysis={analysis}
-                  showAnchors={visibility.anchors}
-                  showHandles={visibility.handles}
-                  showOutlines={visibility.outlines}
-                  showGridlines={visibility.grid}
-                  showElementGuides={visibility.elementGuides}
-                  showAlignmentGuides={visibility.alignment}
-                  showRulers={visibility.rulers}
-                  guides={guides}
-                  onAddGuide={(orientation, position, id) =>
-                    setGuides((g) => [
-                      ...g,
-                      { id: id || crypto.randomUUID(), orientation, position },
-                    ])
-                  }
-                  onUpdateGuide={(id, position) =>
-                    setGuides((g) =>
-                      g.map((v) => (v.id === id ? { ...v, position } : v)),
-                    )
-                  }
-                  onRemoveGuide={(id) =>
-                    setGuides((g) => g.filter((v) => v.id !== id))
-                  }
-                  error={null}
-                  customization={customization}
-                  onHandleMove={moveHandle}
-                  onPathMove={movePath}
-                  snapToGrid={visibility.snap}
-                  selectedPathIndex={selected}
-                  setSelectedPathIndex={setSelected}
-                  onDragStart={() => {
-                    if (data) setLive(structuredClone(data));
-                  }}
-                  onDragEnd={() => {
-                    if (live) setData(live);
-                    setLive(null);
-                  }}
-                  onFileUpload={upload}
-                  onUploadClick={() => fileRef.current?.click()}
-                  isDraggingOver={dragOver}
-                  setIsDraggingOver={setDragOver}
-                />
+                {renderCanvas(mode==='morph'?(morphData||morphFrom||displayed):displayed)}
               </div>
               {mode === "construct" && (
                 <Preview

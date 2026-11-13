@@ -241,6 +241,7 @@ export async function exportMP4(
   background: string,
   onProgress: (p: number) => void,
   signal: AbortSignal,
+  renderFrame?: (progress:number)=>SVGSVGElement,
 ) {
   validateDimensions(settings.width, settings.height, true);
   if (!("VideoEncoder" in window) || !("VideoFrame" in window))
@@ -316,8 +317,9 @@ export async function exportMP4(
     for (let frame = 0; frame < total; frame++) {
       signal.throwIfAborted();
       if (encoderError) throw encoderError;
-      const svg = base.cloneNode(true) as SVGSVGElement;
-      applyConstruction(
+      const progress=frame / Math.max(1,total-1);
+      const svg = renderFrame ? makeExportSVG(renderFrame(progress), {...settings,transparent:false},background) : base.cloneNode(true) as SVGSVGElement;
+      if(!renderFrame)applyConstruction(
         svg,
         frame / Math.max(1, total - 1),
         settings.ending,

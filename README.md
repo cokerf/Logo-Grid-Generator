@@ -156,3 +156,11 @@ These 1920 × 1080 images were exported directly from the web app using the cura
 Right-click the studio or canvas for shuffle, import, play/pause, inspect, grid, ruler and tangent toggles, theme switching, PNG/SVG/MP4 export, and the Coker fallback. The menu supports arrow keys, Enter and Escape, stays inside the window, and does not intercept text-field editing. A right-click never starts a path/handle drag. Interface panels, controls and menus have sharp corners. Provider messages, path/anchor counts and temporary style labels are not displayed.
 
 The Style tab has fourteen coordinated palettes with matched backgrounds, logo ink, hatch colour, guides and markers. Startup chooses a colourful drawing style; the light interface theme remains the default. Measured mono remains available as a deliberate monochrome option.
+
+### Logo evolution with Morph
+
+Open **Morph**, between Inspect and Construction. The current logo becomes the first SVG; upload a second SVG or choose one from the curated library. Either input can be replaced independently, and **Swap** reverses their order without changing your original artwork.
+
+Evolution, Slow study and Continuous loop presets coordinate timing and easing. Scrub any frame, play/pause, set duration and endpoint holds, or reverse the transition. Active drawing colours, hatching, construction guides, markers, tangents and rulers follow the evolving geometry. SVG and PNG save the current frame; **Export morph** saves a frame-by-frame H.264 MP4 using the shared export dimensions, frame rate, quality and ruler settings.
+
+Paper.js matches contours by size and location, aligns their starting points, and grows or collapses unmatched parts. Original vector contours are preserved at both endpoints; intermediate contours are sampled. Different logos can have very different structures, so automatic correspondence may produce intersections during a transition. Live text and textPath remain supported and dissolve between logos; expand lettering to paths when its individual glyph contours need to morph.

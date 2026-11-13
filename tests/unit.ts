@@ -205,3 +205,38 @@ test("enclosing frames and nested counters do not conceal internal wordmark gaps
   assert.deepEqual(m.x.filter(r=>r.kind==='gap').map(r=>[r.start,r.end]),[[30,40],[50,60]]);
   assert.ok(m.xGuides.includes(0)&&m.xGuides.includes(100));
 });
+
+import {prepareMorph,morphProgress,defaultMorph} from '../services/morph.ts';
+import type {ParsedSVG} from '../types';
+function morphFixture(ds:string[]):ParsedSVG{return {rawSVG:'',viewBox:'0 0 100 100',width:100,height:100,paths:ds.map(d=>({d,...parsePathD(d),boundingBox:{x:0,y:0,width:100,height:100} as SVGRect}))};}
+test('morph pairs unequal compound contours, keeps endpoints exact and remains finite',()=>{
+  const a=morphFixture(['M0 0L100 0L100 100L0 100Z M20 20L20 80L80 80L80 20Z']);
+  const b=morphFixture(['M50 0C100 0 100 100 50 100C0 100 0 0 50 0Z','M10 10L20 10L20 20Z']);
+  const frame=prepareMorph(a,b);
+  assert.equal(frame(0).paths.length,1);assert.equal(frame(1).paths.length,2);
+  assert.ok(frame(0).paths[0].d.includes('1000'));
+  for(const t of [0,.001,.25,.5,.75,.999,1])assert.ok(!/NaN|Infinity/.test(JSON.stringify(frame(t))));
+  assert.notEqual(frame(.25).paths[0].d,frame(.75).paths[0].d);
+  assert.equal(frame(.5).paths[0].fillRule,'evenodd');
+});
+test('morph timing holds endpoints, reverses and returns for a loop',()=>{
+  assert.equal(morphProgress(.1,defaultMorph),0);assert.equal(morphProgress(.9,defaultMorph),1);
+  assert.equal(morphProgress(.5,defaultMorph),.5);
+  assert.equal(morphProgress(0,{...defaultMorph,direction:'reverse'}),1);
+  assert.equal(morphProgress(1,{...defaultMorph,direction:'roundtrip'}),0);
+  assert.equal(morphProgress(.5,{...defaultMorph,direction:'roundtrip'}),1);
+});
+test('morph matches open paths without closing them',()=>{
+  const frame=prepareMorph(morphFixture(['M0 0L100 100']),morphFixture(['M100 0L0 100']));
+  assert.ok(!frame(.5).paths[0].d.includes('Z'));
+});
+test('morph keeps live textPath definitions distinct and cross-dissolves lettering',()=>{
+  const make=(text:string):ParsedSVG=>({...morphFixture([]),definitions:'<path id="arc" d="M0 0L100 100"/>',texts:[{markup:`<text><textPath href="#arc">${text}</textPath></text>`,boundingBox:{x:0,y:0,width:100,height:100} as SVGRect}]});
+  const frame=prepareMorph(make('OLD'),make('NEW'))(.5);
+  assert.equal(frame.paths.length,0);
+  assert.equal(frame.texts?.length,2);
+  assert.ok(frame.definitions?.includes('id="morph-from-arc"'));
+  assert.ok(frame.definitions?.includes('id="morph-to-arc"'));
+  assert.ok(frame.texts?.[0].markup.includes('opacity="0.5"'));
+  assert.ok(frame.texts?.[1].markup.includes('href="#morph-to-arc"'));
+});
