@@ -152,3 +152,16 @@ test("curated logo preparation removes only known EPS backing rectangles",async(
   assert.ok(clean.includes('M1 2L3 4'));
   assert.equal(prepareLibrarySVG('puma-logo',source),source);
 });
+
+
+test("cloned SVG references follow unique IDs without changing colours or external resources",async()=>{
+  const {rewriteSVGReference}=await import('../services/svgReferences.ts');
+  const ids=new Map([['trace','preview-1'],['hatch','preview-2'],['fff','preview-3']]);
+  assert.equal(rewriteSVGReference('href','#trace',ids),'#preview-1');
+  assert.equal(rewriteSVGReference('xlink:href','#trace',ids),'#preview-1');
+  assert.equal(rewriteSVGReference('fill','url(#hatch)',ids),'url(#preview-2)');
+  assert.equal(rewriteSVGReference('style',"fill:url('#hatch');stroke:#fff",ids),'fill:url(#preview-2);stroke:#fff');
+  assert.equal(rewriteSVGReference('fill','#fff',ids),'#fff');
+  assert.equal(rewriteSVGReference('href','https://example.test/#trace',ids),'https://example.test/#trace');
+  assert.equal(rewriteSVGReference('src','url(data:font/woff2;base64,AAAA)',ids),'url(data:font/woff2;base64,AAAA)');
+});

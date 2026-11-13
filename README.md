@@ -141,3 +141,11 @@ Open **Drawing** for four editable presets: **Plum hatch**, **Measured mono**, *
 - Proportion labels use `x = logo height / Units across logo height`. Divider positions are percentages of the actual logo width (for example `24,30`). The labels show measured ratios and do not imply the logo was originally designed with those proportions.
 
 All drawing layers are native SVG elements, so web SVG/PNG exports, construction previews and MP4 films share the same result. Hatching fades in with the artwork; guide lines, markers and measurements enter through the construction timeline. Motion preset selection preserves active Drawing layers and styling. These controls are also included in the bundled standalone generator. The native Affinity script retains its basic curve construction controls; use its bundled generator for these additional drawing styles and film exports.
+
+### Exported examples
+
+These 1920 × 1080 images were exported directly from the web app using the curated Adidas logo. Brand artwork belongs to its respective owner; the examples demonstrate the generator's construction styling.
+
+![Plum hatch: shaded paths, anchor markers and dotted extensions](public/examples/plum-hatch.png)
+
+![Measured mono: solid artwork, proportion labels and hollow corner markers](public/examples/measured-mono.png)

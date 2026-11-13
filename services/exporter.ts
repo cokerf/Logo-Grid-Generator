@@ -1,3 +1,4 @@
+import { rewriteSVGReference } from "./svgReferences.ts";
 import { updateExportRulers } from "./exportRulers.ts";
 import { applyCamera, type MotionPreset } from "./motion.ts";
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
@@ -14,6 +15,7 @@ export interface ExportSettings {
   ending: "hold" | "clean";
 }
 const ns = "http://www.w3.org/2000/svg";
+let exportSequence=0;
 export function validateDimensions(
   width: number,
   height: number,
@@ -51,6 +53,19 @@ export function makeExportSVG(
       .querySelectorAll("#element-guides,#alignment-guides")
       .forEach((n) => n.remove());
   svg.querySelectorAll("[style]").forEach((n) => n.removeAttribute("style"));
+  // The inline preview shares a document with the editor. Give cloned resources their own IDs.
+  const elements=[svg,...Array.from(svg.querySelectorAll<SVGElement>('*'))],ids=new Map<string,string>(),prefix=`lgg-export-${++exportSequence}-`;
+  for(const node of elements){const id=node.getAttribute('id');if(id&&!ids.has(id))ids.set(id,prefix+ids.size);}
+  for(const node of elements){
+    const id=node.getAttribute('id');if(id)node.setAttribute('id',ids.get(id)!);
+    for(const attribute of Array.from(node.attributes)){
+      if(attribute.name==='id')continue;
+      const value=rewriteSVGReference(attribute.name,attribute.value,ids);
+      if(value!==attribute.value)node.setAttributeNS(attribute.namespaceURI,attribute.name,value);
+    }
+    if(node.localName==='style'&&node.textContent)node.textContent=rewriteSVGReference('style',node.textContent,ids);
+  }
+
   // Keep artwork and camera inside a nested viewport; rulers stay fixed to the output frame.
   const outer = document.createElementNS(ns, "svg");
   outer.setAttribute("xmlns", ns);
