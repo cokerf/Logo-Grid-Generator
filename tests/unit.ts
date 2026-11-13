@@ -247,3 +247,18 @@ test('random styles never enable tangent spines, including when they were enable
   const c={canvasBackground:'#fff',path:{},anchors:{},handles:{},outlines:{},gridlines:{},rulers:{},elementGuides:{},alignmentGuides:{},guides:{}} as any;
   for(const complexity of [10,900])for(let seed=0;seed<100;seed++)assert.equal(styleVariation(c,{spines:true} as any,{} as any,1000,complexity,()=>seed/100).analysis.spines,false);
 });
+
+import {traceAlpha,needsRenderedImport} from '../services/svgImport.ts';
+test('SVG import routes instances, clips, masks, strokes and unexpanded text to automatic preparation',()=>{
+  for(const body of ['<use href="#logo"/>','<clipPath id="c"/>','<mask id="m"/>','<image href="data:image/png;base64,AA"/>','<path style="stroke: red"/>','<path clip-path="url(#c)"/>'])assert.equal(needsRenderedImport(`<svg>${body}</svg>`),true);
+  assert.equal(needsRenderedImport('<svg><path fill="red" stroke="none"/></svg>'),false);
+  assert.equal(needsRenderedImport('<svg><text>Logo</text></svg>'),false);
+  assert.equal(needsRenderedImport('<svg><text>Logo</text></svg>',true),true);
+});
+test('render tracing preserves a mask hole and excludes an opaque paper backing',()=>{
+  const width=8,height=8,pixels=new Uint8ClampedArray(width*height*4);
+  for(let y=1;y<7;y++)for(let x=1;x<7;x++){if(x>=3&&x<=4&&y>=3&&y<=4)continue;pixels[(y*width+x)*4+3]=255;}
+  const contours=traceAlpha(pixels,width,height);assert.equal(contours.length,2);
+  for(let i=0;i<width*height;i++){if(!pixels[i*4+3]){pixels[i*4]=255;pixels[i*4+1]=255;pixels[i*4+2]=255;pixels[i*4+3]=255;}}
+  assert.equal(traceAlpha(pixels,width,height).length,2);
+});

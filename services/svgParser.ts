@@ -52,8 +52,8 @@ export function parsePathD(d: string) {
 }
 
 export function parseSVG(source: string, fontOverride?: string): ParsedSVG {
-  if (source.length > 5_000_000)
-    throw new Error("Please use an SVG smaller than 5 MB.");
+  if (source.length > 15_000_000)
+    throw new Error("Please use an SVG smaller than 15 MB.");
   const doc = new DOMParser().parseFromString(source, "image/svg+xml");
   const svg = doc.querySelector("svg");
   if (!svg || doc.querySelector("parsererror"))
@@ -63,7 +63,7 @@ export function parseSVG(source: string, fontOverride?: string): ParsedSVG {
     svg.querySelector("[clip-path],[mask]")
   )
     throw new Error(
-      "Expand SVG instances and flatten clipping masks before importing.",
+      "This artwork needs automatic rendered import.",
     );
   const ns = "http://www.w3.org/2000/svg";
   const host = sanitizeGeometry(svg, fontOverride);

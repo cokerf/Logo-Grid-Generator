@@ -27,6 +27,8 @@ export interface SVGPathData {
 
 export interface ParsedSVG {
   rawSVG: string;
+  renderedArtwork?:string;
+  renderedArtworkBounds?:{x:number;y:number;width:number;height:number};
   viewBox: string;
   width: number;
   height: number;

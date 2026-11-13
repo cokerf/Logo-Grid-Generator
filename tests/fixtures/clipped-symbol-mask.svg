@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+<defs>
+ <linearGradient id="ink"><stop stop-color="#ff703f"/><stop offset="1" stop-color="#833dda"/></linearGradient>
+ <symbol id="mark" viewBox="0 0 400 400"><rect x="55" y="55" width="290" height="290" rx="45" fill="url(#ink)"/><path d="M110 200H290M200 110V290" fill="none" stroke="white" stroke-width="20"/></symbol>
+ <clipPath id="clip"><circle cx="200" cy="200" r="140"/></clipPath>
+ <mask id="gap"><rect width="400" height="400" fill="white"/><circle cx="200" cy="200" r="55" fill="black"/></mask>
+</defs>
+<g clip-path="url('#clip')" mask="url(#gap)"><use href="#mark" width="400" height="400"/></g>
+</svg>

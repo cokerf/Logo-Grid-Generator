@@ -104,9 +104,12 @@ export function ControlPanel(p: Props) {
     >
       <div className="panel-scroll">
         <div className="panel-section source-section">
+          <h2 className="source-heading">Start with your logo</h2>
+          <p className="upload-intro">The canvas starts with an example. Upload your own SVG to make it yours.</p>
           <div className="primary-actions">
             <button className="upload-btn" onClick={p.onUpload}>
-              Import SVG
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M10 13V2m-4 4 4-4 4 4M3 12v5h14v-5"/></svg>
+              Upload your logo
             </button>
             <button
               className="create-video"
@@ -139,6 +142,7 @@ export function ControlPanel(p: Props) {
               </button>
             ))}
           </div>
+          <details className="font-settings"><summary>Typography <span>Font & live text</span></summary>
           <div className="font-controls">
             <span>{p.fontName || "SVG text & fonts"}</span>
             <div>
@@ -147,6 +151,7 @@ export function ControlPanel(p: Props) {
               <button onClick={p.onTextDemo}>Try live text</button>
             </div>
           </div>
+          </details>
           {p.textCount > 0 && (
             <p className="hint">
               Text stays live. Upload the original font if the lettering looks
@@ -171,24 +176,9 @@ export function ControlPanel(p: Props) {
           {tab === "Geometry" && (
             <>
               <div className="section-title">
-                <span>CONSTRUCTION LAYERS</span>
+                <span>Curve detail</span>
                 <span>01</span>
               </div>
-              {(
-                [
-                  ["curves", "Bézier trace"],
-                  ["dimensions", "Dimension guides"],
-                  ["spines", "Tangent spines"],
-                  ["circles", "Radius circles"],
-                ] as const
-              ).map(([key, label]) => (
-                <Toggle
-                  key={key}
-                  label={label}
-                  value={a[key]}
-                  onChange={(b) => p.setAnalysis({ ...a, [key]: b })}
-                />
-              ))}
               {field(
                 "Sampling",
                 range(a.samples, 12, 100, (b) =>

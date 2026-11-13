@@ -1,3 +1,6 @@
+import {importSVG} from '../services/svgImport';
+import clippedFixture from './fixtures/clipped-symbol-mask.svg?raw';
+import letteringFixture from './fixtures/live-lettering.svg?raw';
 import { parsePathD, parseSVG } from "../services/svgParser";
 import { analyzePath } from "../services/geometry";
 import {
@@ -20,6 +23,19 @@ async function test(name: string, fn: () => unknown | Promise<unknown>) {
     results.push({ name, passed: false, error: String(e) });
   }
 }
+await test("Automatically prepare clipped symbols and masks without manual expansion",async()=>{
+  const parsed=await importSVG(clippedFixture);
+  assert(parsed.paths.length>0&&parsed.paths[0].d.includes('C'),'Visible artwork was not traced');
+  assert(parsed.renderedArtwork?.startsWith('data:image/png'),'Original appearance was not retained');
+  assert(parsed.paths[0].fillRule==='evenodd','Mask hole must stay open');
+  const bounds=parsed.paths[0].boundingBox!;
+  assert(bounds.width>1300&&bounds.width<1600,'Clip silhouette was ignored');
+});
+await test("Prepare unexpanded textPath lettering for a geometric morph",async()=>{
+  const parsed=await importSVG(letteringFixture,undefined,'',true);
+  assert(parsed.paths.length>0&&!parsed.texts?.length,'Lettering did not become morphable contours');
+  assert(parsed.paths[0].points.length>20,'Glyph contours are missing');
+});
 const ns = "http://www.w3.org/2000/svg";
 await test("Repeated coordinates, compact negative numbers, exponents and relative commands", () => {
   const p = parsePathD("m1e1 10 20-5 10 15h20 10v10 20");
@@ -209,9 +225,8 @@ await test("Workspace renders and construction controls update the visible canva
     b!.click();
     await new Promise((r) => setTimeout(r, 80));
   };
-  const curvature = Array.from(doc.querySelectorAll("label"))
-    .find((l) => l.textContent?.trim() === "Dimension guides")
-    ?.querySelector("input");
+  const curvature = Array.from(doc.querySelectorAll("button"))
+    .find((b) => b.textContent?.trim() === "Dimension guides");
   assert(curvature, "Missing dimensions toggle");
   curvature!.click();
   await new Promise((r) => setTimeout(r, 80));

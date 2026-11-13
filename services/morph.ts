@@ -41,7 +41,8 @@ function normalized(data:ParsedSVG,prefix:string):ParsedSVG{
   for(const match of markup.matchAll(/\bid=["']([^"']+)["']/g))ids.set(match[1],prefix+match[1]);
   const rewrite=(value:string)=>value.replace(/\bid=(["'])([^"']+)\1/g,(all,q,id)=>`id=${q}${ids.get(id)||id}${q}`).replace(/(href=["'])#([^"']+)(["'])/g,(all,a,id,b)=>`${a}#${ids.get(id)||id}${b}`).replace(/url\(\s*(['"]?)#([^\s)'";]+)\1\s*\)/g,(all,q,id)=>`url(#${ids.get(id)||id})`);
   const texts=(data.texts||[]).map(t=>({markup:`<g transform="matrix(${scale} 0 0 ${scale} ${tx} ${ty})">${rewrite(t.markup)}</g>`,boundingBox:{x:t.boundingBox.x*scale+tx,y:t.boundingBox.y*scale+ty,width:t.boundingBox.width*scale,height:t.boundingBox.height*scale} as SVGRect}));
-  return {...data,viewBox:'0 0 1000 1000',width:1000,height:1000,paths,texts,definitions:rewrite(data.definitions||'')};
+  const b=data.renderedArtworkBounds;
+  return {...data,renderedArtworkBounds:b?{x:b.x*scale+tx,y:b.y*scale+ty,width:b.width*scale,height:b.height*scale}:undefined,viewBox:'0 0 1000 1000',width:1000,height:1000,paths,texts,definitions:rewrite(data.definitions||'')};
 }
 export function prepareMorph(from:ParsedSVG,to:ParsedSVG){
   const start=normalized(from,'morph-from-'),end=normalized(to,'morph-to-');

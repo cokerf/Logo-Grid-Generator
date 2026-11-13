@@ -1,3 +1,4 @@
+import {importSVG} from './services/svgImport';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {prepareMorph,morphProgress,defaultMorph,type MorphOptions} from './services/morph';
 import { QuickMenu,type QuickAction } from "./components/QuickMenu";
@@ -170,8 +171,8 @@ export default function App() {
   const morphInputs=[useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null)];
   const morphModel=React.useMemo(()=>{if(!morphFrom||!morphTo)return null;try{return prepareMorph(morphFrom,morphTo);}catch{return null;}},[morphFrom,morphTo]);
   const morphData=React.useMemo(()=>morphModel?.(morphProgress(time,morphOptions)),[morphModel,time,morphOptions]);
-  const enterMorph=()=>{loadSequence.current++;if(!morphFrom&&displayed){setMorphFrom(structuredClone(displayed));setMorphNames(n=>[fileName.split(' / ').pop()||'First logo',n[1]]);}setMode('morph');setPlaying(false);setTime(0);};
-  const importMorph=async(file:File,index:number)=>{try{if(file.size>5_000_000)throw new Error('Please use an SVG smaller than 5 MB.');const parsed=parseSVG(await file.text(),fontRef.current?.family);(index===0?setMorphFrom:setMorphTo)(parsed);setMorphNames(n=>n.map((v,i)=>i===index?file.name:v));setTime(0);setPlaying(false);setError('');}catch(e){setError((e as Error).message);}};
+  const enterMorph=async()=>{loadSequence.current++;if(!morphFrom&&displayed){try{setMorphFrom(displayed.texts?.length?await importSVG(displayed.rawSVG,fontRef.current?.family,bundledFontCSS+(fontRef.current?.css||''),true):structuredClone(displayed));}catch(e){setError((e as Error).message);return;}setMorphNames(n=>[fileName.split(' / ').pop()||'First logo',n[1]]);}setMode('morph');setPlaying(false);setTime(0);};
+  const importMorph=async(file:File,index:number)=>{try{if(file.size>15_000_000)throw new Error('Please use an SVG smaller than 15 MB.');const parsed=await importSVG(await file.text(),fontRef.current?.family,bundledFontCSS+(fontRef.current?.css||''),true);(index===0?setMorphFrom:setMorphTo)(parsed);setMorphNames(n=>n.map((v,i)=>i===index?file.name:v));setTime(0);setPlaying(false);setError('');}catch(e){setError((e as Error).message);}};
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [board, setBoard] = useState({ width: 600, height: 750 });
@@ -210,7 +211,7 @@ export default function App() {
           );
           await document.fonts.ready;
         }
-        const parsed = parseSVG(source, fontRef.current?.family);
+        const parsed = await importSVG(source, fontRef.current?.family,bundledFontCSS+(fontRef.current?.css||''));
         loadSequence.current++;
         reset(parsed);
         setLive(null);
@@ -319,8 +320,8 @@ export default function App() {
   const upload = async (file: File) => {
     setDragOver(false);
     try {
-      if (file.size > 5_000_000)
-        throw new Error("Please use an SVG smaller than 5 MB.");
+      if (file.size > 15_000_000)
+        throw new Error("Please use an SVG smaller than 15 MB.");
       loadSVG(await file.text(), file.name);
     } catch (e) {
       setError((e as Error).message);
@@ -696,6 +697,7 @@ export default function App() {
                 </>
               ) : (
                 <>
+                  <button className="canvas-upload" onClick={()=>fileRef.current?.click()}>Upload your logo <span aria-hidden="true">↑</span></button>
                   <button aria-label="Undo" disabled={!canUndo} onClick={undo}>
                     ↶
                   </button>

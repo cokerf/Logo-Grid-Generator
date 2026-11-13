@@ -758,9 +758,10 @@ export const Canvas: React.FC<CanvasProps> = ({
               />
             )}
 
+          {svgData.renderedArtwork&&customization.showFill&&customization.useOriginalColors&&!drafting.hatch&&<image data-stage="4" data-logo="true" href={svgData.renderedArtwork} {...(svgData.renderedArtworkBounds||{x:0,y:0,width:svgData.width,height:svgData.height})}/>}
           {svgData.paths.map((path, i) => {
             const isSelected = i === selectedPathIndex;
-            const fillColor = drafting.hatch ? hatchFill : customization.showFill
+            const fillColor = svgData.renderedArtwork&&customization.useOriginalColors&&!drafting.hatch ? "none" : drafting.hatch ? hatchFill : customization.showFill
               ? customization.useOriginalColors
                 ? path.sourceFill || customization.fillColor
                 : customization.fillColor
