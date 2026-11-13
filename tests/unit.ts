@@ -141,3 +141,14 @@ test("guide geometry follows straight SVG edges, spans the viewport, and stays b
   assert.ok(lines.flatMap(l=>[l.a.x,l.a.y,l.b.x,l.b.y]).every(Number.isFinite));
   assert.deepEqual(measurementSplits('30,24,24,NaN,-4,101'),[0,24,30,100]);
 });
+
+
+test("curated logo preparation removes only known EPS backing rectangles",async()=>{
+  const {prepareLibrarySVG}=await import('../services/logoPreparation.ts');
+  const source='<svg><path fill="#fff" d="M0 0h192.756v192.756H0V0z"/><path fill="#fff" d="M10 10H20V20Z"/><path d="M1 2L3 4"/></svg>';
+  const clean=prepareLibrarySVG('adidas',source);
+  assert.ok(!clean.includes('192.756'));
+  assert.ok(clean.includes('M10 10H20V20Z'));
+  assert.ok(clean.includes('M1 2L3 4'));
+  assert.equal(prepareLibrarySVG('puma-logo',source),source);
+});

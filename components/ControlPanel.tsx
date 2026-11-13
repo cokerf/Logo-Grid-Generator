@@ -447,6 +447,7 @@ export function ControlPanel(p: Props) {
                             duration: preset.duration,
                             ending: preset.id === "minimal" ? "clean" : "hold",
                           });
+                          if(!(c.drafting?.hatch||c.drafting?.guides||c.drafting?.proportions||c.drafting?.cornerMarkers)){
                           p.setAnalysis({
                             ...a,
                             curves: true,
@@ -460,6 +461,7 @@ export function ControlPanel(p: Props) {
                             anchors: preset.id === "precision",
                             handles: preset.id === "precision",
                           });
+                          }
                           p.onPreviewMotion();
                         }}
                       >

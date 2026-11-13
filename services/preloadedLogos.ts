@@ -1,3 +1,4 @@
+import { prepareLibrarySVG } from "./logoPreparation";
 // Curated snapshots retrieved through the authenticated WorldVectorLogo API.
 // The key is never included. Manual selection checks the live API; shuffling uses these local vectors.
 import logo0 from "../assets/library/adidas.svg?raw";
@@ -11,7 +12,7 @@ import logo7 from "../assets/library/puma-logo.svg?raw";
 import logo8 from "../assets/library/python-5.svg?raw";
 import logo9 from "../assets/library/slack-new-logo.svg?raw";
 import logo10 from "../assets/library/the-north-face-1.svg?raw";
-export const preloadedLogos:Record<string,string>={
+const snapshots:Record<string,string>={
   "adidas":logo0,
   "apple-11":logo1,
   "bmw-logo":logo2,
@@ -24,3 +25,5 @@ export const preloadedLogos:Record<string,string>={
   "slack-new-logo":logo9,
   "the-north-face-1":logo10
 };
+
+export const preloadedLogos:Record<string,string>=Object.fromEntries(Object.entries(snapshots).map(([slug,svg])=>[slug,prepareLibrarySVG(slug,svg)]));
