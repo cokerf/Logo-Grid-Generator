@@ -472,7 +472,7 @@ export function ControlPanel(p: Props) {
                         })
                       }
                     >
-                      {[3, 5, 8, 10, 15, 20, 30].map((n) => (
+                      {[3, 5, 8, 10, 12, 15, 20, 30].map((n) => (
                         <option key={n} value={n}>
                           {n} seconds
                         </option>

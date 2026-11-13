@@ -61,10 +61,11 @@ export function applyCamera(
   progress: number,
 ) {
   const scene = svg.querySelector<SVGSVGElement>("svg") || svg;
-  const [x, y, w, h] = (scene.getAttribute("viewBox") || "0 0 100 100")
+  const [x, y, w, h] = (scene.getAttribute("data-base-viewbox") || scene.getAttribute("viewBox") || "0 0 100 100")
     .split(/[\s,]+/)
     .map(Number);
   if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) return;
+  if(!scene.hasAttribute("data-base-viewbox"))scene.setAttribute("data-base-viewbox",scene.getAttribute("viewBox")||"0 0 100 100");
   const c = cameraAt(preset, progress),
     nw = w / c.zoom,
     nh = h / c.zoom;

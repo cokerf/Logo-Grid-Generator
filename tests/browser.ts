@@ -227,12 +227,10 @@ await test("Workspace renders and construction controls update the visible canva
   );
   await click("Construction");
   assert(
-    doc.querySelector('img[alt="Construction animation preview"]'),
+    doc.querySelector('[aria-label="Construction animation preview"]'),
     "Construction preview missing",
   );
-  const img = doc.querySelector("img")!;
-  await img.decode();
-  assert(img.naturalWidth > 0, "Preview SVG is invalid");
+  assert(doc.querySelector('[aria-label="Construction animation preview"] svg'),"Preview SVG is missing");
   await click("Export");
   assert(
     buttons().some((b) => b.textContent === "Export MP4"),

@@ -132,13 +132,17 @@ export function applyConstruction(
       // Filled markers appear; strokes are traced using their actual SVG lengths.
       if ((node as SVGGeometryElement).getTotalLength) {
         try {
-          const length = (node as SVGGeometryElement).getTotalLength();
-          if (length > 0 && local < 1) {
-            node.setAttribute("stroke-dasharray", `${length} ${length}`);
-            node.setAttribute(
-              "stroke-dashoffset",
-              String(length * (1 - local)),
-            );
+          if(!node.hasAttribute('data-length')) {
+            node.setAttribute('data-length',String((node as SVGGeometryElement).getTotalLength()));
+            node.setAttribute('data-original-dash',node.getAttribute('stroke-dasharray')||'');
+            node.setAttribute('data-original-offset',node.getAttribute('stroke-dashoffset')||'');
+          }
+          const length=Number(node.getAttribute('data-length'));
+          if(length>0&&local<1){node.setAttribute('stroke-dasharray',`${length} ${length}`);node.setAttribute('stroke-dashoffset',String(length*(1-local)));}
+          else {
+            const dash=node.getAttribute('data-original-dash'),offset=node.getAttribute('data-original-offset');
+            if(dash)node.setAttribute('stroke-dasharray',dash);else node.removeAttribute('stroke-dasharray');
+            if(offset)node.setAttribute('stroke-dashoffset',offset);else node.removeAttribute('stroke-dashoffset');
           }
         } catch {
           /* An empty geometry has nothing to trace. */

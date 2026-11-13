@@ -58,34 +58,19 @@ function Preview({
   progress: number;
   revision: unknown;
 }) {
-  const [base, setBase] = useState<SVGSVGElement | null>(null);
-  useEffect(() => {
-    if (source.current)
-      setBase(
-        makeExportSVG(
-          source.current,
-          { ...settings, transparent: false },
-          background,
-        ),
-      );
-  }, [source, settings, background, revision]);
-  if (!base) return null;
-  const svg = base.cloneNode(true) as SVGSVGElement;
-  applyConstruction(svg, progress, settings.ending, settings.motion);
-  return (
-    <img
-      alt="Construction animation preview"
-      src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(serializeSVG(svg))}`}
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        objectFit: "contain",
-        background,
-      }}
-    />
-  );
+  const host=useRef<HTMLDivElement>(null),scene=useRef<SVGSVGElement|null>(null);
+  useEffect(()=>{
+    if(!source.current||!host.current)return;
+    const svg=makeExportSVG(source.current,{...settings,transparent:false},background);
+    svg.style.width='100%';svg.style.height='100%';
+    host.current.replaceChildren(svg);scene.current=svg;
+    return()=>{svg.remove();if(scene.current===svg)scene.current=null;};
+  },[source,settings,background,revision]);
+  useEffect(()=>{
+    if(scene.current)applyConstruction(scene.current,progress,settings.ending,settings.motion);
+  },[progress,settings,background,revision]);
+  return <div ref={host} role="img" aria-label="Construction animation preview" style={{position:'absolute',inset:0,width:'100%',height:'100%',background,pointerEvents:'none'}}/>;
+
 }
 export default function App() {
   const {
@@ -270,6 +255,8 @@ export default function App() {
     let id = 0,
       last = 0;
     const tick = (now: number) => {
+      if(last && now-last<1000/30){id=requestAnimationFrame(tick);return;}
+
       if (last) {
         const delta = (now - last) / 1000 / settings.duration;
         setTime((t) => {
