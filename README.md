@@ -175,3 +175,11 @@ The editor now automatically prepares SVG instances, symbols, clipping paths, ma
 When a file needs rendering, the browser resolves its visible appearance at up to 2048 pixels on the longest side, and Paper.js simplifies the traced silhouette into construction paths. This is a visual approximation for effect-heavy artwork; the original rendered colours remain available through Logo fill and Original logo colours. A soft mask produces a thresholded construction outline while the original rendering retains its transparency. Linked images are fetched and embedded when their server permits it. Broken XML, missing assets and unavailable fonts cannot be reconstructed from the file alone; upload its font or include its linked images where needed. Files up to 15 MB are supported.
 
 The refreshed workspace uses a slimmer toolbar, clear artwork controls, larger settings text, a compact typography disclosure, and one set of construction layer switches. Light and dark themes retain sharp edges throughout.
+
+### Frameworks, full colour and retained grids
+
+Drawing → Logo appearance switches between Outline, Hatched, Solid colour and Original colours. Original colours enables the logo fill and takes precedence over hatching while keeping the construction overlays. Style → Original logo colours also activates the fill in one action. Palette changes preserve the original-colour choice.
+
+Drawing → Construction frameworks adds Modular, Isometric, Radial, Golden ratio, Rule of thirds and Baseline overlays. Choose the canvas or logo bounds, then set divisions, rotation, offsets, line style, colour, opacity and weight. Reference circles and diagonal cross-lines are optional. These are editable proportional references, not claims that a logo follows the golden ratio or any other system. They render through the shared canvas in stills, construction films and Morph.
+
+Export → Include canvas grid is enabled by default. It exports a grid that is switched on in the workspace and retains it through a clean video ending. Disable the export checkbox to omit it while keeping it visible in the editor. Tangent spines now default to 14% opacity with a thinner stroke; enable them manually, then adjust their opacity, weight and line style in Geometry. Shuffling never enables tangent spines.

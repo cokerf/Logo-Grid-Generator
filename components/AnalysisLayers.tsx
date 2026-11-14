@@ -6,6 +6,9 @@ export interface AnalysisOptions {
   curves: boolean;
   dimensions: boolean;
   spines: boolean;
+  spineOpacity?:number;
+  spineWidth?:number;
+  spineStyle?:"solid"|"dashed"|"dotted";
   circles: boolean;
   samples: number;
   gain: number;
@@ -72,8 +75,9 @@ export function AnalysisLayers({
         <g
           data-stage="1"
           data-tangent-spines="true"
-          strokeDasharray={`${scale * 0.007} ${scale * 0.004}`}
-          opacity=".6"
+          strokeWidth={scale*(options.spineWidth??.6)/1000}
+          strokeDasharray={options.spineStyle==='solid'?undefined:options.spineStyle==='dotted'?`${scale*.001} ${scale*.004}`:`${scale*.007} ${scale*.004}`}
+          opacity={options.spineOpacity??.14}
         >
           {analysis.flatMap((a, i) =>
             a.spines.map((d, j) => <path key={`${i}-${j}`} d={d} />),

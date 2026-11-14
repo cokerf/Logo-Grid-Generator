@@ -1,3 +1,5 @@
+import {logoAppearance,setLogoAppearance,type LogoAppearance} from '../services/appearance';
+import {FrameworkPanel} from './FrameworkPanel';
 import React,{useId} from 'react';
 import type {CustomizationOptions,DraftingOptions} from '../types';
 import type {AnalysisOptions} from './AnalysisLayers';
@@ -10,14 +12,19 @@ function PresetThumb({preset}:{preset:typeof drawingPresets[number]}){
 }
 export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:CustomizationOptions;a:AnalysisOptions;v:Visibility;scale:number;setC:(c:CustomizationOptions)=>void;setA:(a:AnalysisOptions)=>void;setV:(v:Visibility)=>void;onInspect:()=>void}){
   const d=c.drafting||defaultDrafting;
-  const update=(change:Partial<DraftingOptions>)=>setC({...c,drafting:{...d,...change,presetId:undefined}});
+  const update=(change:Partial<DraftingOptions>)=>setC({...c,...(change.hatch?{useOriginalColors:false}:{}),drafting:{...d,...change,presetId:undefined}});
   const check=(label:string,value:boolean,onChange:(value:boolean)=>void)=><label className="toggle-row">{label}<input className="toggle" type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/></label>;
   const field=(label:string,children:React.ReactNode)=><label className="field-row">{label}{children}</label>;
   const range=(label:string,key:keyof DraftingOptions,min:number,max:number,step=1)=>field(label,<input type="range" min={min} max={max} step={step} value={Number(d[key])} onChange={e=>update({[key]:Number(e.target.value)})}/>);
   const color=(label:string,key:'hatchColor'|'guideColor'|'cornerColor')=>field(label,<input type="color" value={d[key]} onChange={e=>update({[key]:e.target.value})}/>);
   return <>
+    <div className="drawing-group logo-appearance"><div className="section-title"><span>Logo appearance</span></div>
+      {field('Logo appearance',<select value={logoAppearance(c)} onChange={e=>setC(setLogoAppearance(c,e.target.value as LogoAppearance))}><option value="outline">Outline</option><option value="hatch">Hatched</option><option value="solid">Solid colour</option><option value="original">Original colours</option></select>)}
+      <p className="hint">Original colours keep the logo in full colour with your construction overlays.</p>
+    </div>
     <div className="section-title"><span>Drawing presets</span><span>Editable geometry</span></div>
     <div className="drawing-presets">{drawingPresets.map(p=><button key={p.id} className={d.presetId===p.id?'active':''} aria-pressed={d.presetId===p.id} onClick={()=>{const result=drawingPreset(p.id,c,a,v,scale);setC(result.customization);setA(result.analysis);setV(result.visibility);onInspect();}}><PresetThumb preset={p}/><strong>{p.name}</strong><span>{p.description}</span></button>)}</div>
+    <FrameworkPanel c={c} setC={setC}/>
     <div className="drawing-group"><div className="section-title"><span>Shading</span></div>
       {check('Diagonal hatch fill',d.hatch,value=>update({hatch:value}))}
       {d.hatch&&<>{range('Hatch angle','hatchAngle',-90,90,1)}{range('Hatch spacing','hatchSpacing',3,24,.5)}{range('Hatch weight','hatchWidth',.2,2,.1)}{range('Hatch opacity','hatchOpacity',.1,1,.05)}{color('Hatch colour','hatchColor')}</>}
@@ -51,6 +58,6 @@ export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:Customiza
         <p className="hint">One x is logo height ÷ {d.heightUnits}. Guides follow the actual components and gaps. Leave dividers blank for automatic measurement, or enter percentages to override.</p>
       </>}
     </div>
-    <button className="secondary drawing-reset" onClick={()=>{setC({...c,drafting:{...defaultDrafting}});setV({...v,anchors:false});}}>Reset drawing overlays</button>
+    <button className="secondary drawing-reset" onClick={()=>{setC({...c,drafting:{...defaultDrafting},framework:c.framework?{...c.framework,enabled:false}:undefined});setV({...v,anchors:false});}}>Reset drawing overlays</button>
   </>;
 }

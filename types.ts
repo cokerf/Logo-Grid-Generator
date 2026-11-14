@@ -44,6 +44,7 @@ export interface Guide {
 }
 
 export interface CustomizationOptions {
+  framework?:import("./services/frameworks").FrameworkOptions;
   drafting?: DraftingOptions;
   showFill: boolean;
   useOriginalColors?: boolean;

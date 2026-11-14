@@ -262,3 +262,17 @@ test('render tracing preserves a mask hole and excludes an opaque paper backing'
   for(let i=0;i<width*height;i++){if(!pixels[i*4+3]){pixels[i*4]=255;pixels[i*4+1]=255;pixels[i*4+2]=255;pixels[i*4+3]=255;}}
   assert.equal(traceAlpha(pixels,width,height).length,2);
 });
+
+import {frameworkGeometry,defaultFramework,frameworks} from '../services/frameworks.ts';
+import {logoAppearance,setLogoAppearance} from '../services/appearance.ts';
+test('frameworks produce finite geometry with logo-bound and full-canvas extents',()=>{
+ const data=morphFixture(['M0 0L100 0L100 100Z']),viewport={x:-40,y:-60,width:180,height:220};
+ for(const f of frameworks)for(const extent of ['canvas','logo'] as const){const g=frameworkGeometry(data,viewport,{...defaultFramework,kind:f.id,extent,enabled:true,circles:true,diagonals:true,rotation:35,offsetX:8,offsetY:-10});assert.ok(g.paths.length);assert.ok(!/NaN|Infinity/.test(JSON.stringify(g)));assert.equal(g.box.width,extent==='logo'?100:180);}
+ const g=frameworkGeometry(data,viewport,{...defaultFramework,kind:'radial',extent:'logo',divisions:8});assert.equal(g.circles.length,8);assert.equal(g.circles[0].x,50);assert.equal(g.circles[0].y,50);
+});
+test('original colours override hatching and activate fill without discarding construction settings',()=>{
+ const c={showFill:false,useOriginalColors:false,drafting:{hatch:true,guides:true},path:{stroke:'#000'},framework:{...defaultFramework,enabled:true}} as any;
+ const full=setLogoAppearance(c,'original');assert.equal(full.showFill,true);assert.equal(full.useOriginalColors,true);assert.equal(full.drafting?.hatch,false);assert.equal(full.drafting?.guides,true);assert.equal(full.framework?.enabled,true);assert.equal(logoAppearance(full),'original');
+ assert.equal(logoAppearance({...full,drafting:{...full.drafting!,hatch:true}}),'original');
+ for(const appearance of ['hatch','solid','outline'] as const)assert.equal(logoAppearance(setLogoAppearance(full,appearance)),appearance);
+});

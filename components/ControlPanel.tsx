@@ -1,3 +1,4 @@
+import {setLogoAppearance} from '../services/appearance';
 import { motionPresets, type MotionPreset } from "../services/motion";
 import {studioPalettes} from "../services/styleVariation";
 import { DrawingPanel } from "./DrawingPanel";
@@ -179,6 +180,11 @@ export function ControlPanel(p: Props) {
                 <span>Curve detail</span>
                 <span>01</span>
               </div>
+              {a.spines&&<div className="spine-settings">
+                {field('Tangent spine opacity',<input type="range" min=".02" max=".5" step=".02" value={a.spineOpacity??.14} onChange={e=>p.setAnalysis({...a,spineOpacity:Number(e.target.value)})}/>)}
+                {field('Tangent spine weight',<input type="range" min=".2" max="2" step=".1" value={a.spineWidth??.6} onChange={e=>p.setAnalysis({...a,spineWidth:Number(e.target.value)})}/>)}
+                {field('Tangent spine style',<select value={a.spineStyle||'dashed'} onChange={e=>p.setAnalysis({...a,spineStyle:e.target.value as AnalysisOptions['spineStyle']})}><option value="dashed">Dashed</option><option value="dotted">Dotted</option><option value="solid">Solid</option></select>)}
+              </div>}
               {field(
                 "Sampling",
                 range(a.samples, 12, 100, (b) =>
@@ -215,7 +221,7 @@ export function ControlPanel(p: Props) {
                       p.setCustomization({
                         ...c,
                         canvasBackground: bg,
-                        useOriginalColors: false,
+                        ...(c.framework?{framework:{...c.framework,color:accent}}:{}),
                         ...(c.drafting?{drafting:{...c.drafting,presetId:undefined,hatchColor:fg,guideColor:accent,cornerColor:accent}}:{}),
                         fillColor: c.showFill ? fg : fg + "22",
                         path: { ...c.path, stroke: fg },
@@ -241,7 +247,7 @@ export function ControlPanel(p: Props) {
                 label="Original logo colours"
                 value={!!c.useOriginalColors}
                 onChange={(value) =>
-                  p.setCustomization({ ...c, useOriginalColors: value })
+                  p.setCustomization(value?setLogoAppearance(c,'original'):{...c,useOriginalColors:false})
                 }
               />
               <Toggle
@@ -526,6 +532,7 @@ export function ControlPanel(p: Props) {
                   onChange={(b) => p.setSettings({ ...s, transparent: b })}
                 />
               )}
+              <label className="export-check"><input type="checkbox" checked={s.includeGrid!==false} onChange={e=>p.setSettings({...s,includeGrid:e.target.checked})}/><span>Include canvas grid<small>Keep the visible grid in stills and video, including the clean finish.</small></span></label>
               <label className="export-check">
                 <input type="checkbox" checked={s.includeRulers !== false} onChange={(e) => p.setSettings({...s, includeRulers:e.target.checked})} />
                 <span>Include rulers<small>Shown in exports when canvas rulers are on.</small></span>

@@ -1,3 +1,5 @@
+import {logoAppearance} from '../services/appearance';
+import {FrameworkLayers} from './FrameworkLayers';
 import { DraftingLayers, DraftMarker, HatchDefinition } from "./DraftingLayers";
 import { defaultDrafting } from "../services/drafting";
 import { canvasViewport } from "../services/canvasViewport";
@@ -184,7 +186,7 @@ const Grid: React.FC<{
       }
     }
   }
-  return <g data-stage="0" pointerEvents="none">{items}</g>;
+  return <g data-stage="0" data-canvas-grid="true" pointerEvents="none">{items}</g>;
 };
 
 const Anchors: React.FC<{points:Point[];options:CustomizationOptions["anchors"]}>=({points,options})=>(
@@ -445,6 +447,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 }) => {
   const hatchId="draft-hatch-"+useId().replace(/[^a-zA-Z0-9_-]/g,"");
   const drafting=customization.drafting||defaultDrafting;
+  const showHatch=logoAppearance(customization)==='hatch';
   const hatchFill=`url(#${hatchId})`;
   const [dragState, setDragState] = useState<DragState | null>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
@@ -736,9 +739,10 @@ export const Canvas: React.FC<CanvasProps> = ({
             dangerouslySetInnerHTML={{ __html: svgData.definitions || "" }}
           />
           <defs>
-            {drafting.hatch&&<HatchDefinition id={hatchId} options={drafting} scale={Math.max(svgData.width,svgData.height)}/>}
+            {showHatch&&<HatchDefinition id={hatchId} options={drafting} scale={Math.max(svgData.width,svgData.height)}/>}
             <style>{fontCSS}</style>
           </defs>
+          {customization.framework&&<FrameworkLayers data={svgData} viewport={viewBox} options={customization.framework}/>}
           <DraftingLayers data={svgData} viewport={viewBox} options={drafting} layer="guides"/>
           {showAlignmentGuides && svgData && (
             <AlignmentGuides
@@ -758,10 +762,10 @@ export const Canvas: React.FC<CanvasProps> = ({
               />
             )}
 
-          {svgData.renderedArtwork&&customization.showFill&&customization.useOriginalColors&&!drafting.hatch&&<image data-stage="4" data-logo="true" href={svgData.renderedArtwork} {...(svgData.renderedArtworkBounds||{x:0,y:0,width:svgData.width,height:svgData.height})}/>}
+          {svgData.renderedArtwork&&customization.showFill&&customization.useOriginalColors&&!showHatch&&<image data-stage="4" data-logo="true" href={svgData.renderedArtwork} {...(svgData.renderedArtworkBounds||{x:0,y:0,width:svgData.width,height:svgData.height})}/>}
           {svgData.paths.map((path, i) => {
             const isSelected = i === selectedPathIndex;
-            const fillColor = svgData.renderedArtwork&&customization.useOriginalColors&&!drafting.hatch ? "none" : drafting.hatch ? hatchFill : customization.showFill
+            const fillColor = svgData.renderedArtwork&&customization.useOriginalColors&&!showHatch ? "none" : showHatch ? hatchFill : customization.showFill
               ? customization.useOriginalColors
                 ? path.sourceFill || customization.fillColor
                 : customization.fillColor
@@ -816,15 +820,15 @@ export const Canvas: React.FC<CanvasProps> = ({
               data-stage="4"
               data-logo="true"
               data-live-text="true"
-              fill={drafting.hatch ? hatchFill : customization.showFill ? customization.fillColor : "none"}
+              fill={showHatch ? hatchFill : customization.showFill ? customization.fillColor : "none"}
               stroke={customization.path.stroke}
               strokeWidth={customization.path.strokeWidth}
               dangerouslySetInnerHTML={{
-                __html: !drafting.hatch && customization.useOriginalColors && customization.showFill
+                __html: !showHatch && customization.useOriginalColors && customization.showFill
                   ? text.markup
                   : text.markup.replace(
                       /fill="[^"]*"/g,
-                      `fill="${drafting.hatch ? hatchFill : customization.showFill ? customization.fillColor : "none"}"`,
+                      `fill="${showHatch ? hatchFill : customization.showFill ? customization.fillColor : "none"}"`,
                     ),
               }}
             />

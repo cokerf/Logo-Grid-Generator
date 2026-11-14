@@ -27,7 +27,7 @@ export function styleVariation(c:CustomizationOptions,a:AnalysisOptions,v:Visibi
   const size=Math.max(scale,1), detail=choose(['dimensions','handles','quiet'] as const),dense=complexity>250;
   return {
     name:palette.name,
-    customization:{...c,...(c.drafting?{drafting:{...c.drafting,presetId:undefined,hatchColor:palette.ink,guideColor:palette.accent,cornerColor:palette.accent}}:{}),canvasBackground:palette.background,useOriginalColors:false,showFill:false,fillColor:palette.ink+'18',
+    customization:{...c,...(c.framework?{framework:{...c.framework,color:palette.accent}}:{}),...(c.drafting?{drafting:{...c.drafting,presetId:undefined,hatchColor:palette.ink,guideColor:palette.accent,cornerColor:palette.accent}}:{}),canvasBackground:palette.background,useOriginalColors:false,showFill:false,fillColor:palette.ink+'18',
       path:{stroke:palette.ink,strokeWidth:size*choose([.0008,.001,.0013])},
       anchors:{...c.anchors,color:palette.accent,size:size*.004,shape:choose(['square','circle'] as const)},
       handles:{color:palette.accent,width:size*.0007},

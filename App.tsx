@@ -143,6 +143,7 @@ export default function App() {
       quality: "high",
       includeGuides: true,
       includeRulers: true,
+      includeGrid:true,
       transparent: false,
       ending: "hold",
     });

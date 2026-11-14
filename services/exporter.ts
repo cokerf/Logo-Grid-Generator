@@ -11,6 +11,7 @@ export interface ExportSettings {
   quality: "standard" | "high";
   includeGuides: boolean;
   includeRulers?: boolean;
+  includeGrid?:boolean;
   transparent: boolean;
   ending: "hold" | "clean";
 }
@@ -52,6 +53,8 @@ export function makeExportSVG(
     svg
       .querySelectorAll("#element-guides,#alignment-guides")
       .forEach((n) => n.remove());
+  if(settings.includeGrid===false)svg.querySelectorAll('[data-canvas-grid]').forEach(n=>n.remove());
+  else svg.querySelectorAll('[data-canvas-grid]').forEach(n=>n.setAttribute('data-retain-on-export','true'));
   svg.querySelectorAll("[style]").forEach((n) => n.removeAttribute("style"));
   // The inline preview shares a document with the editor. Give cloned resources their own IDs.
   const elements=[svg,...Array.from(svg.querySelectorAll<SVGElement>('*'))],ids=new Map<string,string>(),prefix=`lgg-export-${++exportSequence}-`;
@@ -103,12 +106,12 @@ export function applyConstruction(
   )) {
     const stage = Number(group.dataset.stage);
     const nodes = group.matches(
-      "path,line,circle,rect,polyline,ellipse,text,[data-live-text]",
+      "path,line,circle,rect,polyline,ellipse,text,image,[data-live-text]",
     )
       ? [group]
       : Array.from(
           group.querySelectorAll<SVGGeometryElement>(
-            "path,line,circle,rect,polyline,ellipse,text,[data-live-text]",
+            "path,line,circle,rect,polyline,ellipse,text,image,[data-live-text]",
           ),
         );
     group.setAttribute(
@@ -141,7 +144,7 @@ export function applyConstruction(
         "1";
       node.setAttribute("data-original-opacity", original);
       const fade =
-        ending === "clean" && !node.hasAttribute("data-logo")
+        ending === "clean" && !node.hasAttribute("data-logo") && !node.closest('[data-retain-on-export="true"]')
           ? 1 - ease(clamp((progress - 0.82) / 0.14))
           : 1;
       node.setAttribute(
@@ -153,6 +156,7 @@ export function applyConstruction(
           "fill-opacity",
           String(ease(clamp((progress - 0.69) / 0.17))),
         );
+      if(node.localName==='image'&&node.hasAttribute('data-logo'))node.setAttribute('opacity',String(Number(original)*ease(clamp((progress-.69)/.17))));
       // Reveal dashed/dotted guide lines by extending their endpoints, preserving the dash pattern.
       if(node.localName==='line' && (node.hasAttribute('stroke-dasharray') || node.parentElement?.closest('[stroke-dasharray]'))){
         if(!node.hasAttribute('data-line-x2')){
