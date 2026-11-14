@@ -183,3 +183,5 @@ Drawing → Logo appearance switches between Outline, Hatched, Solid colour and 
 Drawing → Construction frameworks adds Modular, Isometric, Radial, Golden ratio, Rule of thirds and Baseline overlays. Choose the canvas or logo bounds, then set divisions, rotation, offsets, line style, colour, opacity and weight. Reference circles and diagonal cross-lines are optional. These are editable proportional references, not claims that a logo follows the golden ratio or any other system. They render through the shared canvas in stills, construction films and Morph.
 
 Export → Include canvas grid is enabled by default. It exports a grid that is switched on in the workspace and retains it through a clean video ending. Disable the export checkbox to omit it while keeping it visible in the editor. Tangent spines now default to 14% opacity with a thinner stroke; enable them manually, then adjust their opacity, weight and line style in Geometry. Shuffling never enables tangent spines.
+
+![Original logo colours with construction overlays in the refreshed workspace](public/examples/colour-framework-workspace.jpg)
