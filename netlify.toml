@@ -14,3 +14,14 @@
   for = "/"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+# Installation instructions and script downloads must reflect the current release.
+[[headers]]
+  for = "/affinity.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/downloads/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

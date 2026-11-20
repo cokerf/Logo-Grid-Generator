@@ -1,6 +1,10 @@
-# Logo Grid Generator for Affinity
+# Logo Grid Studio 2.1 for Affinity
 
 Native construction drawing for **desktop Affinity by Canva 3.3.3+** on Windows and macOS. Affinity Designer 2 does not support this scripting workflow.
+
+## Updating an old installation
+
+The current window is titled **Logo Grid Studio 2.1** and has three columns: Logo geometry/Drawing appearance, Guides/Transparency, and Radius circles/Layer colours/Preview. A narrow “Construction layers” dialog with six checkboxes is the original script and has no live preview. Saved Scripts Library entries do not update when this website is deployed. Edit that entry, select all and paste the latest complete source, then **Save As → Logo Grid Studio 2.1** and run that new entry. The versioned download is `logo-grid-affinity-2.1.zip`; the source is `Logo-Grid-Studio-2.1.js`.
 
 ## Install: use the Script Editor
 
@@ -8,9 +12,9 @@ Native construction drawing for **desktop Affinity by Canva 3.3.3+** on Windows 
 
 1. Open `START-HERE.html` from the extracted ZIP, or https://logo-grid-generator.netlify.app/affinity.html, and click **Copy Affinity script**. A selectable source field is available if clipboard access is blocked.
 2. In Affinity, open **Window → Scripting → Script Editor** and start an empty script.
-3. Paste the complete source. Leave **Run as module** off: the script uses CommonJS and exports `module.exports.main`, matching the current official SDK examples.
+3. Paste the complete source. Leave **Run as module** off: the script uses CommonJS and explicitly calls its entry point, matching the runnable Script Editor tutorial. Earlier builds only exported `main`, which could finish silently in the editor; that launch error is fixed.
 4. **Open your logo SVG as a document first.** Switch to Vector and select the logo curves, shapes, live text or group with the Move Tool. Focus the Script Editor and click **Run**, or press **F5 on Windows / ⌘ Return on Mac**. Saving to the library alone does not execute the script. If the workspace says “No document open”, open your SVG before running.
-5. Save it to your Scripts Library from the editor to reuse it. To share an importable category, export that category as `.afscripts` from Affinity. No fabricated or renamed native library file is included in this build.
+5. Save As **Logo Grid Studio 2.1** in your Scripts Library to reuse it. To share an importable category, export that category as `.afscripts` from Affinity. No fabricated or renamed native library file is included in this build.
 
 You can also open `Logo-Grid-Generator.js` in a text editor and copy its contents manually.
 
@@ -24,8 +28,8 @@ No-document and empty-selection launches now show visible instructions. Unexpect
 - **Outlines, anchor markers and handles:** separate editable parts. Anchor shape and size are configurable; handle tips are filled circles.
 - **Modular grid, bounding frame, center marks and dimension brackets:** independent toggles. Dimension brackets are unlabelled geometry; use the web generator for measured labels.
 - **Tangent spines:** off by default, extended across the construction frame and rendered at 10% opacity.
-- **Appearance:** six palettes, independent outline/guide/circle/marker/background colours, stroke weight, marker size, solid/dashed/dotted guide and circle strokes, optional background and silhouette.
-- **Live preview:** controls redraw the construction on the canvas. Cancel clears it. Confirm commits the named container and its parts in one compound command, restoring the original selection. Generated Logo Grid containers are skipped on subsequent runs.
+- **Appearance:** six palettes, independent outline/guide/circle/marker/background colours, stroke weight, marker size, solid/dashed/dotted guide and circle strokes, and independent guide/handle/circle/spine opacity, optional background and silhouette.
+- **Live preview:** enabled initially; the construction draws on the document canvas before the dialog opens. Move the dialog aside or resize it to inspect the artwork. Controls redraw it on the canvas. Cancel clears it. Confirm commits the named container and its parts in one compound command, restoring the original selection. Generated Logo Grid containers are skipped on subsequent runs.
 
 ## Supported artwork and limits
 

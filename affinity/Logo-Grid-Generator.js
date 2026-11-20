@@ -1,5 +1,5 @@
 "use strict";
-// Logo Grid Generator — Coker Oluwafemi.
+// Logo Grid Studio 2.1 — Coker Oluwafemi.
 // Paste into Affinity's Script Editor as CommonJS; save to the Scripts Library.
 // No network, file access or destructive conversion of source artwork.
 function main() {
@@ -53,44 +53,52 @@ function main() {
     ['Ultramarine / coral',[241,240,255],[140,163,240],[255,154,137],[255,221,105],[32,49,145]],
     ['Mint / forest',[24,77,61],[91,148,124],[174,88,83],[24,77,61],[225,241,225]],
   ];
-  const dlg = Dialog.create('Logo Grid Generator');
-  dlg.initialWidth = 760;
-  const left=dlg.addColumn(), right=dlg.addColumn();
-  const layersUI=left.addGroup('01  Construction');
+  const dlg = Dialog.create('Logo Grid Studio 2.1');
+  dlg.initialWidth = 1040;
+  dlg.isResizable = true;
+  const left=dlg.addColumn(), middle=dlg.addColumn(), right=dlg.addColumn();
+  const layersUI=left.addGroup('Logo geometry');
+  const guidesUI=middle.addGroup('Guides and framework');
+  const circlesUI=right.addGroup('Radius circles');
   const checks={
-    guides:layersUI.addCheckBox('Edge and curve-peak guides',true),
-    angled:layersUI.addCheckBox('Diagonal edge extensions',false),
-    frame:layersUI.addCheckBox('Bounding frame and center lines',false),
-    grid:layersUI.addCheckBox('Modular grid',false),
+    guides:guidesUI.addCheckBox('Edge and curve-peak guides',true),
+    angled:guidesUI.addCheckBox('Diagonal edge extensions',false),
+    frame:guidesUI.addCheckBox('Bounding frame and center lines',false),
+    grid:guidesUI.addCheckBox('Modular grid',false),
     trace:layersUI.addCheckBox('Bézier outline',true),
     anchors:layersUI.addCheckBox('Anchor markers',true),
     handles:layersUI.addCheckBox('Control handles',true),
-    circles:layersUI.addCheckBox('Fitted radius circles',false),
-    centers:layersUI.addCheckBox('Circle center marks',true),
-    dimensions:layersUI.addCheckBox('Dimension brackets',false),
-    spines:layersUI.addCheckBox('Tangent spines',false),
+    circles:circlesUI.addCheckBox('Fitted radius circles',false),
+    centers:circlesUI.addCheckBox('Circle center marks',true),
+    dimensions:guidesUI.addCheckBox('Dimension brackets',false),
+    spines:guidesUI.addCheckBox('Tangent spines',false),
     silhouette:layersUI.addCheckBox('Silhouette fill',false),
     background:layersUI.addCheckBox('Palette background',false),
   };
-  const geometryUI=left.addGroup('02  Detail and extent');
+  const geometryUI=middle.addGroup('Guide detail and extent');
   const sensitivity=geometryUI.addComboBox('Guides',['Essential','Balanced','Detailed'],1);
-  const complexity=geometryUI.addComboBox('Circle detail',['Essential · 4','Balanced · 12','Detailed · 32','All · 64'],1);
+  const complexity=circlesUI.addComboBox('Circle detail',['Essential · 4','Balanced · 12','Detailed · 32','All · 64'],1);
   const extent=geometryUI.addComboBox('Guide overshoot',['15%','35%','70%','120%'],1);
-  const maxRadius=geometryUI.addComboBox('Largest radius',['35% of logo','70% of logo','150% of logo'],1);
+  const maxRadius=circlesUI.addComboBox('Largest radius',['35% of logo','70% of logo','150% of logo'],1);
   const divisions=geometryUI.addComboBox('Grid divisions',['8','12','20','32'],2);
-  const styleUI=right.addGroup('03  Appearance');
+  const styleUI=left.addGroup('Drawing appearance');
   const style=styleUI.addComboBox('Palette',palettes.map(p=>p[0]),0);
   const stroke=styleUI.addUnitValueEditor('Stroke weight',UnitType.Pixel,UnitType.Pixel,scale/900,scale/10000,scale/40);
   const markerSize=styleUI.addComboBox('Marker size',['Small','Medium','Large'],1);
   const markerShape=styleUI.addComboBox('Anchor shape',['Square','Circle','Diamond'],0);
   const guideStyle=styleUI.addComboBox('Guide stroke',['Solid','Dashed','Dotted'],2);
-  const radiusStyle=styleUI.addComboBox('Circle stroke',['Solid','Dashed','Dotted'],0);
-  const colours=right.addGroup('04  Layer colours');
+  const radiusStyle=circlesUI.addComboBox('Circle stroke',['Solid','Dashed','Dotted'],0);
+  const transparency=middle.addGroup('Transparency');
+  const guideOpacity=transparency.addUnitValueEditor('Guide opacity (%)',UnitType.Number,UnitType.Number,65,0,100);
+  const spineOpacity=transparency.addUnitValueEditor('Spine opacity (%)',UnitType.Number,UnitType.Number,10,0,35);
+  const circleOpacity=circlesUI.addUnitValueEditor('Circle opacity (%)',UnitType.Number,UnitType.Number,80,0,100);
+  const handleOpacity=styleUI.addUnitValueEditor('Handle opacity (%)',UnitType.Number,UnitType.Number,65,0,100);
+  const colours=right.addGroup('Layer colours');
   const colourControls=['Outline','Guides','Circles','Markers','Background'].map((name,i)=>{const picker=colours.addColourPicker(name,RGB8(...palettes[0][i+1]));picker.allowPickNone=false;return picker;});
   style.onValueChangedHandler=()=>colourControls.forEach((control,i)=>{control.value=RGB8(...palettes[style.selectedIndex][i+1]);});
   const previewUI=right.addGroup('Preview');
   const preview=previewUI.addCheckBox('Preview on canvas',true);
-  previewUI.addStaticText('','Source artwork stays editable. Cancel removes the preview. Each construction part has its own editable layer.');
+  previewUI.addStaticText('','Preview draws on your document canvas. Move this window aside or resize it to see the artwork. Cancel removes the preview; OK keeps editable construction layers.');
   let inPreview=false;
   function buildCommand() {
     const enabled={};for(const key of Object.keys(checks))enabled[key]=checks[key].value;
@@ -103,13 +111,13 @@ function main() {
     const styles={
       'Background':{colour:4,fill:true},'Silhouette':{colour:0,fill:true,alpha:.1},
       'Modular grid':{colour:1,alpha:.25,weight:.45,dash:guideStyle.selectedIndex},
-      'Edge guides':{colour:1,alpha:.65,weight:.65,dash:guideStyle.selectedIndex},
-      'Diagonal edges':{colour:1,alpha:.45,weight:.65,dash:guideStyle.selectedIndex},
-      'Bounding frame':{colour:1,alpha:.65,weight:.65,dash:guideStyle.selectedIndex},
-      'Radius circles':{colour:2,alpha:.8,weight:.8,dash:radiusStyle.selectedIndex},
-      'Circle centers':{colour:2,alpha:.8,weight:.65},
-      'Tangent spines':{colour:1,alpha:.1,weight:.5},
-      'Bézier trace':{colour:0},'Control handles':{colour:3,alpha:.65,weight:.6},
+      'Edge guides':{colour:1,alpha:guideOpacity.value/100,weight:.65,dash:guideStyle.selectedIndex},
+      'Diagonal edges':{colour:1,alpha:guideOpacity.value/100*.7,weight:.65,dash:guideStyle.selectedIndex},
+      'Bounding frame':{colour:1,alpha:guideOpacity.value/100,weight:.65,dash:guideStyle.selectedIndex},
+      'Radius circles':{colour:2,alpha:circleOpacity.value/100,weight:.8,dash:radiusStyle.selectedIndex},
+      'Circle centers':{colour:2,alpha:circleOpacity.value/100,weight:.65},
+      'Tangent spines':{colour:1,alpha:spineOpacity.value/100,weight:.5},
+      'Bézier trace':{colour:0},'Control handles':{colour:3,alpha:handleOpacity.value/100,weight:.6},
       'Handle tips':{colour:3,fill:true},'Anchor markers':{colour:3,fill:true},
       'Dimension brackets':{colour:1,alpha:.8,weight:.75},
     };
@@ -173,7 +181,7 @@ function main() {
     return CompoundCommandBuilder.create().addCommand(group.createCommand(true)).addCommand(children.createCommand(false)).addCommand(DocumentCommand.createSetSelection(originalSelection)).createCommand();
   }
   function update(isPreview){if(inPreview)return;inPreview=true;try{const command=buildCommand();if(command)doc.executeCommand(command,isPreview);else doc.clearPreviews();return !!command;}catch(error){doc.clearPreviews();throw error;}finally{inPreview=false;}}
-  function syncControls(){complexity.isEnabled=checks.circles.value;maxRadius.isEnabled=checks.circles.value;radiusStyle.isEnabled=checks.circles.value;checks.centers.isEnabled=checks.circles.value;sensitivity.isEnabled=checks.guides.value;divisions.isEnabled=checks.grid.value;markerShape.isEnabled=checks.anchors.value;markerSize.isEnabled=checks.anchors.value||checks.handles.value;}
+  function syncControls(){circleOpacity.isEnabled=checks.circles.value;spineOpacity.isEnabled=checks.spines.value;handleOpacity.isEnabled=checks.handles.value;complexity.isEnabled=checks.circles.value;maxRadius.isEnabled=checks.circles.value;radiusStyle.isEnabled=checks.circles.value;checks.centers.isEnabled=checks.circles.value;sensitivity.isEnabled=checks.guides.value;divisions.isEnabled=checks.grid.value;markerShape.isEnabled=checks.anchors.value;markerSize.isEnabled=checks.anchors.value||checks.handles.value;}
   syncControls();
   dlg.onControlValueChangedHandler=()=>{syncControls();if(preview.value)update(true);else doc.clearPreviews();};
   try {
@@ -182,12 +190,13 @@ function main() {
     if(ok){doc.clearPreviews();update(false);}
   } finally {doc.clearPreviews();}
 }
-// Affinity calls the exported entry point. Do not execute while loading the module.
-module.exports.main = function runLogoGrid() {
+// Script Editor evaluates the script body; invoke the entry point explicitly.
+function runLogoGrid() {
   try { main(); }
   catch (error) {
     const message = error && error.message ? error.message : String(error);
     console.error('Logo Grid Generator: ' + message);
     alert('Logo Grid Generator could not finish.\n\n' + message + '\n\nThe Script Editor output contains the error details.');
   }
-};
+}
+runLogoGrid();
