@@ -1,10 +1,12 @@
-# Logo Grid Studio 2.1 for Affinity
+# Logo Grid Studio 2.1.1 for Affinity
 
 Native construction drawing for **desktop Affinity by Canva 3.3.3+** on Windows and macOS. Affinity Designer 2 does not support this scripting workflow.
 
 ## Updating an old installation
 
-The current window is titled **Logo Grid Studio 2.1** and has three columns: Logo geometry/Drawing appearance, Guides/Transparency, and Radius circles/Layer colours/Preview. A narrow “Construction layers” dialog with six checkboxes is the original script and has no live preview. Saved Scripts Library entries do not update when this website is deployed. Edit that entry, select all and paste the latest complete source, then **Save As → Logo Grid Studio 2.1** and run that new entry. The versioned download is `logo-grid-affinity-2.1.zip`; the source is `Logo-Grid-Studio-2.1.js`.
+The current window is titled **Logo Grid Studio 2.1.1** and has three columns: Logo geometry/Drawing appearance, Guides/Transparency, and Radius circles/Layer colours/Preview. A narrow “Construction layers” dialog with six checkboxes is the original script and has no live preview. Saved Scripts Library entries do not update when this website is deployed. Cancel any running script dialog. Create a **New Script** tab, paste the complete latest source and run from that tab first, then **Save As → Logo Grid Studio 2.1.1** and run that new entry. The versioned download is `logo-grid-affinity-2.1.1.zip`; the source is `Logo-Grid-Studio-2.1.1.js`.
+
+The 2.1.1 patch isolates all functions in a private scope so existing `main` or `runLogoGrid` functions cannot be called by this source. Runtime failures identify the failing stage. This prevents a global name collision; it cannot replace an old script that is still being launched from the library.
 
 ## Install: use the Script Editor
 
@@ -14,7 +16,7 @@ The current window is titled **Logo Grid Studio 2.1** and has three columns: Log
 2. In Affinity, open **Window → Scripting → Script Editor** and start an empty script.
 3. Paste the complete source. Leave **Run as module** off: the script uses CommonJS and explicitly calls its entry point, matching the runnable Script Editor tutorial. Earlier builds only exported `main`, which could finish silently in the editor; that launch error is fixed.
 4. **Open your logo SVG as a document first.** Switch to Vector and select the logo curves, shapes, live text or group with the Move Tool. Focus the Script Editor and click **Run**, or press **F5 on Windows / ⌘ Return on Mac**. Saving to the library alone does not execute the script. If the workspace says “No document open”, open your SVG before running.
-5. Save As **Logo Grid Studio 2.1** in your Scripts Library to reuse it. To share an importable category, export that category as `.afscripts` from Affinity. No fabricated or renamed native library file is included in this build.
+5. Save As **Logo Grid Studio 2.1.1** in your Scripts Library to reuse it. To share an importable category, export that category as `.afscripts` from Affinity. No fabricated or renamed native library file is included in this build.
 
 You can also open `Logo-Grid-Generator.js` in a text editor and copy its contents manually.
 
@@ -41,6 +43,6 @@ Geometry generation is capped at 30,000 elements. Circle output is capped at 64 
 
 ## Validation
 
-Uses the official Affinity 3.3.3 JSLib signatures from https://sdk.affinity.studio/latest/. Automated tests exercise the exported entry point, analytic extrema, grouping, selection restoration, colours, dashed strokes, duplicate suppression, preview cancellation and error cleanup. **Affinity Desktop is not installed in the build environment: native dialog behaviour, live text geometry and spread alignment still need a real desktop check.** Affinity scripting remains beta. The ZIP is source plus a setup guide, not a verified native library export.
+Uses the official Affinity 3.3.3 JSLib signatures from https://sdk.affinity.studio/latest/. Automated tests execute the complete pasted script body, analytic extrema, grouping, selection restoration, colours, dashed strokes, duplicate suppression, preview cancellation and error cleanup. **Affinity Desktop is not installed in the build environment: native dialog behaviour, live text geometry and spread alignment still need a real desktop check.** Affinity scripting remains beta. The ZIP is source plus a setup guide, not a verified native library export.
 
 Designed and developed by Coker Oluwafemi — https://cokeroluwafemi.com/.

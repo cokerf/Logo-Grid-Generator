@@ -1,8 +1,10 @@
 "use strict";
-// Logo Grid Studio 2.1 — Coker Oluwafemi.
+// Logo Grid Studio 2.1.1 — Coker Oluwafemi.
 // Paste into Affinity's Script Editor as CommonJS; save to the Scripts Library.
 // No network, file access or destructive conversion of source artwork.
-function main() {
+(function logoGridStudio211() {
+let operation = 'Opening the document';
+function buildLogoGrid() {
   const { Document } = require('/document.js');
   const doc = Document.current;
   if (!doc) {
@@ -32,6 +34,7 @@ function main() {
     else for (const child of node.children || []) collect(child);
   }
   for (const node of originalSelection.nodes) collect(node);
+  operation = 'Reading the selected logo geometry';
   const curves = [];
   for (const node of nodes) {
     const poly = node.polyCurve.clone();
@@ -53,7 +56,8 @@ function main() {
     ['Ultramarine / coral',[241,240,255],[140,163,240],[255,154,137],[255,221,105],[32,49,145]],
     ['Mint / forest',[24,77,61],[91,148,124],[174,88,83],[24,77,61],[225,241,225]],
   ];
-  const dlg = Dialog.create('Logo Grid Studio 2.1');
+  operation = 'Building the Studio 2.1.1 controls';
+  const dlg = Dialog.create('Logo Grid Studio 2.1.1');
   dlg.initialWidth = 1040;
   dlg.isResizable = true;
   const left=dlg.addColumn(), middle=dlg.addColumn(), right=dlg.addColumn();
@@ -180,23 +184,25 @@ function main() {
     }
     return CompoundCommandBuilder.create().addCommand(group.createCommand(true)).addCommand(children.createCommand(false)).addCommand(DocumentCommand.createSetSelection(originalSelection)).createCommand();
   }
-  function update(isPreview){if(inPreview)return;inPreview=true;try{const command=buildCommand();if(command)doc.executeCommand(command,isPreview);else doc.clearPreviews();return !!command;}catch(error){doc.clearPreviews();throw error;}finally{inPreview=false;}}
+  function update(isPreview){operation=isPreview?'Drawing the canvas preview':'Adding the construction layers';if(inPreview)return;inPreview=true;try{const command=buildCommand();if(command)doc.executeCommand(command,isPreview);else doc.clearPreviews();return !!command;}catch(error){doc.clearPreviews();throw error;}finally{inPreview=false;}}
   function syncControls(){circleOpacity.isEnabled=checks.circles.value;spineOpacity.isEnabled=checks.spines.value;handleOpacity.isEnabled=checks.handles.value;complexity.isEnabled=checks.circles.value;maxRadius.isEnabled=checks.circles.value;radiusStyle.isEnabled=checks.circles.value;checks.centers.isEnabled=checks.circles.value;sensitivity.isEnabled=checks.guides.value;divisions.isEnabled=checks.grid.value;markerShape.isEnabled=checks.anchors.value;markerSize.isEnabled=checks.anchors.value||checks.handles.value;}
   syncControls();
   dlg.onControlValueChangedHandler=()=>{syncControls();if(preview.value)update(true);else doc.clearPreviews();};
   try {
     if(preview.value)update(true);
     const result=dlg.runModal(), ok=(result&&result.value!==undefined?result.value:result)===DialogResult.Ok.value;
-    if(ok){doc.clearPreviews();update(false);}
+    if(ok){doc.clearPreviews();if(!update(false))alert('No construction was added. Enable Bézier outline or edge guides, or increase the circle detail, then run again.');}
   } finally {doc.clearPreviews();}
 }
 // Script Editor evaluates the script body; invoke the entry point explicitly.
-function runLogoGrid() {
-  try { main(); }
+function startStudio() {
+  try { buildLogoGrid(); }
   catch (error) {
     const message = error && error.message ? error.message : String(error);
-    console.error('Logo Grid Generator: ' + message);
-    alert('Logo Grid Generator could not finish.\n\n' + message + '\n\nThe Script Editor output contains the error details.');
+    console.error('Logo Grid Studio 2.1.1 / ' + operation + ': ' + message);
+    if(error && error.stack)console.error(error.stack);
+    alert('Logo Grid Studio 2.1.1 could not finish.\n\n' + operation + ': ' + message + '\n\nThe Script Editor output contains the error details.');
   }
 }
-runLogoGrid();
+startStudio();
+})();

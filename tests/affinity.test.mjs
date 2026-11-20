@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 const script=readFileSync(new URL('../affinity/Logo-Grid-Generator.js',import.meta.url),'utf8');
 const arch={start:{x:0,y:100},c1:{x:0,y:0},c2:{x:100,y:0},end:{x:100,y:100}};
-function host({cancel=false,selected=true,documentOpen=true,all=false,override={},onDialog,segments=[arch],generated=false,type='isPolyCurveNode',fail=false}={}){
+function host({cancel=false,selected=true,documentOpen=true,all=false,override={},onDialog,segments=[arch],generated=false,type='isPolyCurveNode',fail=false,staleGlobals=false}={}){
   const records={dialogTitles:[],columns:0,writes:[],definitions:[],controls:{},clears:0,groups:[],transforms:[],alerts:[],errors:[]};
   class Colour{constructor(r,g,b){Object.assign(this,{r,g,b,alpha:1});}clone(){return new Colour(this.r,this.g,this.b);}}
   const curves=segments.map(b=>({isEmpty:false,firstOnCurvePointIndex:0,pointCount:4,getNextOnCurvePointIndex:i=>i===0?1:-1,getCubicBezier:()=>b,clone(){return this;}}));
@@ -28,13 +28,14 @@ function host({cancel=false,selected=true,documentOpen=true,all=false,override={
     '/colours.js':{RGB8:(r,g,b)=>new Colour(r,g,b)},'/units.js':{UnitType:{Pixel:5}},'affinity:common':{BlendMode:{Normal:0}},
   };
   const module={exports:{}};
-  const context=vm.createContext({module,alert:message=>records.alerts.push(message),console:{error:message=>records.errors.push(message)},require:name=>{assert.ok(modules[name],name);return modules[name];}});
+  const stale=()=>{throw Error('Stale entry point executed');};
+  const context=vm.createContext({...(staleGlobals?{main:stale,runLogoGrid:stale}:{}),module,alert:message=>records.alerts.push(message),console:{error:message=>records.errors.push(message)},require:name=>{assert.ok(modules[name],name);return modules[name];}});
   const run=()=>vm.runInContext(script,context);
   const committed=()=>records.writes.filter(w=>!w.preview);
   const part=(name)=>records.definitions.filter(d=>d.userDescription==='Logo Grid / '+name).at(-1);
   return{records,doc,selection,run,committed,part,module};
 }
-test('Affinity pasted source runs its entry point without an external loader',()=>{const h=host();h.run();assert.equal(h.committed().length,1);assert.equal(h.records.dialogTitles[0],'Logo Grid Studio 2.1');assert.equal(h.records.columns,3);});
+test('Affinity pasted source runs its entry point without an external loader',()=>{const h=host();h.run();assert.equal(h.committed().length,1);assert.equal(h.records.dialogTitles[0],'Logo Grid Studio 2.1.1');assert.equal(h.records.columns,3);});
 test('Affinity construction is grouped in one compound commit and restores the selection',()=>{const h=host({all:true});h.run();const command=h.committed()[0].c;assert.equal(command.commands.length,3);assert.equal(command.commands[0].parts[0].name,'Logo Grid / Paper / cobalt');assert.equal(command.commands[2].selection,h.selection);assert.equal(h.doc.selection,h.selection);assert.ok(h.part('Bézier trace'));assert.ok(h.part('Anchor markers'));assert.ok(h.part('Control handles'));assert.ok(h.part('Handle tips'));assert.ok(h.part('Dimension brackets'));assert.ok(h.part('Modular grid'));assert.ok(h.records.transforms.length);});
 test('Affinity Cancel clears previews without committing',()=>{const h=host({cancel:true});h.run();assert.equal(h.committed().length,0);assert.equal(h.records.writes.filter(w=>w.preview).length,1);assert.ok(h.records.clears>=1);});
 test('Affinity guides pass through the true cubic peak, not control points',()=>{const h=host();h.run();const guides=h.part('Edge guides').poly.parts;assert.ok(guides.some(l=>Math.abs(l.a.y-25)<1e-8&&Math.abs(l.b.y-25)<1e-8));assert.ok(!guides.some(l=>l.a.y===0&&l.b.y===0));});
@@ -53,3 +54,5 @@ test('Affinity no-document launch shows a visible instruction and makes no chang
 
 test('Affinity preview is drawn before the dialog opens and changes redraw the canvas',()=>{const h=host({onDialog:(dlg,r)=>{assert.equal(r.writes.filter(w=>w.preview).length,1);r.controls['Guide opacity (%)'].value=30;dlg.onControlValueChangedHandler();assert.equal(r.writes.filter(w=>w.preview).length,2);}});h.run();assert.equal(h.part('Edge guides').stroke.colour.alpha,.3);assert.equal(h.committed().length,1);});
 test('Affinity source can run twice in the same Script Editor context',()=>{const h=host();h.run();h.run();assert.equal(h.committed().length,2);});
+
+test('Affinity Studio is isolated from older main and runLogoGrid globals',()=>{const h=host({staleGlobals:true});h.run();assert.equal(h.records.alerts.length,0);assert.equal(h.committed().length,1);assert.equal(h.records.dialogTitles[0],'Logo Grid Studio 2.1.1');});
