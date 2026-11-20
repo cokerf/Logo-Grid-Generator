@@ -4,6 +4,15 @@
 // No network, file access or destructive conversion of source artwork.
 function main() {
   const { Document } = require('/document.js');
+  const doc = Document.current;
+  if (!doc) {
+    alert('Logo Grid Generator: no document is open. Open your logo SVG in Affinity, select the logo artwork, then run this script again.');
+    return;
+  }
+  if (!doc.selection.length) {
+    alert('Logo Grid Generator: select your logo artwork first. Switch to Vector, select the curves, shapes, text or logo group with the Move Tool, then run this script again.');
+    return;
+  }
   const { Dialog, DialogResult } = require('/dialog.js');
   const { Curve, PolyCurve } = require('/geometry.js');
   const { ContainerNodeDefinition, PolyCurveNodeDefinition } = require('/nodes.js');
@@ -13,8 +22,6 @@ function main() {
   const { RGB8 } = require('/colours.js');
   const { UnitType } = require('/units.js');
   const { BlendMode } = require('affinity:common');
-  const doc = Document.current;
-  if (!doc || !doc.selection.length) throw new Error('Open a document and select your logo curves, shapes, text or group first.');
   const originalSelection = doc.selection, nodes = [], seen = [];
   function collect(node) {
     if (seen.some(other => other.isSameNode(node))) return;
@@ -176,4 +183,11 @@ function main() {
   } finally {doc.clearPreviews();}
 }
 // Affinity calls the exported entry point. Do not execute while loading the module.
-module.exports.main = main;
+module.exports.main = function runLogoGrid() {
+  try { main(); }
+  catch (error) {
+    const message = error && error.message ? error.message : String(error);
+    console.error('Logo Grid Generator: ' + message);
+    alert('Logo Grid Generator could not finish.\n\n' + message + '\n\nThe Script Editor output contains the error details.');
+  }
+};

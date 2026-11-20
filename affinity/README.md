@@ -9,10 +9,12 @@ Native construction drawing for **desktop Affinity by Canva 3.3.3+** on Windows 
 1. Open `START-HERE.html` from the extracted ZIP, or https://logo-grid-generator.netlify.app/affinity.html, and click **Copy Affinity script**. A selectable source field is available if clipboard access is blocked.
 2. In Affinity, open **Window → Scripting → Script Editor** and start an empty script.
 3. Paste the complete source. Leave **Run as module** off: the script uses CommonJS and exports `module.exports.main`, matching the current official SDK examples.
-4. Select your logo curves, shapes, live text or group and run the script from the editor.
+4. **Open your logo SVG as a document first.** Switch to Vector and select the logo curves, shapes, live text or group with the Move Tool. Focus the Script Editor and click **Run**, or press **F5 on Windows / ⌘ Return on Mac**. Saving to the library alone does not execute the script. If the workspace says “No document open”, open your SVG before running.
 5. Save it to your Scripts Library from the editor to reuse it. To share an importable category, export that category as `.afscripts` from Affinity. No fabricated or renamed native library file is included in this build.
 
 You can also open `Logo-Grid-Generator.js` in a text editor and copy its contents manually.
+
+No-document and empty-selection launches now show visible instructions. Unexpected runtime errors appear in an alert and are logged in Script Editor output.
 
 ## Construction controls
 
