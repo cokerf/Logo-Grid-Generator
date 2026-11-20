@@ -1,24 +1,40 @@
 # Logo Grid Generator for Affinity
 
-A native scripting add-on for **Affinity by Canva 3.3.1 or newer**, using the supported JavaScript SDK. This is not an Affinity V2 Photoshop filter, a Figma-style webview panel, or a Community marketplace publication.
+Native construction drawing for **desktop Affinity by Canva 3.3.3+** on Windows and macOS. Affinity Designer 2 does not support this scripting workflow.
 
-## Install and use
+## Install: use the Script Editor
 
-1. Download and extract `logo-grid-affinity.zip`.
-2. In Affinity, open the Scripts panel or Scripting Studio and import/open `Logo-Grid-Generator.js`. Save it to your Scripts Library if you want to reuse it.
-3. Select curve layers, or a group containing curve layers. For shapes and text, convert a copy to curves first.
-4. Run the script, choose the construction layers in its native dialog, and confirm.
+**The JavaScript source is not an `.afscripts` library file.** The Scripts Library → Import Scripts picker will not select it. Renaming a `.js` file does not convert it into Affinity’s library format. Earlier instructions incorrectly suggested importing JavaScript there.
 
-The script creates editable grid, Bézier trace, anchor and handle, dimension brackets, tangent spine, and radius circle layers in the current spread. Source artwork stays intact. The entire addition is one undo step. Cancel does not change the document. Complex selections are bounded to prevent generating excessive geometry.
+1. Open `START-HERE.html` from the extracted ZIP, or https://logo-grid-generator.netlify.app/affinity.html, and click **Copy Affinity script**. A selectable source field is available if clipboard access is blocked.
+2. In Affinity, open **Window → Scripting → Script Editor** and start an empty script.
+3. Paste the complete source. Leave **Run as module** off: the script uses CommonJS and exports `module.exports.main`, matching the current official SDK examples.
+4. Select your logo curves, shapes, live text or group and run the script from the editor.
+5. Save it to your Scripts Library from the editor to reuse it. To share an importable category, export that category as `.afscripts` from Affinity. No fabricated or renamed native library file is included in this build.
 
-The native grid surrounds the selected logo with 15% padding. For an exact output canvas, live SVG text, style controls, and construction MP4, open the included `generator.html` in Chrome/Edge, or use https://logo-grid-generator.netlify.app/. Export the artwork as SVG from Affinity, import it into the generator, then open/place the exported construction SVG back in Affinity. MP4 encoding needs a browser with H.264 WebCodecs support; the hosted HTTPS app is the preferred export surface.
+You can also open `Logo-Grid-Generator.js` in a text editor and copy its contents manually.
 
-## Compatibility and validation
+## Construction controls
 
-Uses `/document.js`, `/dialog.js`, `/geometry.js`, `/nodes.js`, `/commands.js`, `/fills.js`, `/linestyle.js`, `/colours.js`, and `affinity:common` from the official SDK. No network, external plugin loader, or account connection is required by the native script.
+- **Edge and curve-peak guides:** actual path endpoints and analytic cubic Bézier extrema, clustered by position and ranked by segment span. Essential, Balanced and Detailed control density.
+- **Diagonal edge extensions:** only sufficiently long, straight diagonal segments; repeated lines merge.
+- **Radius circles:** local curvature candidates checked against a surrounding arc; nearby duplicate centers/radii merge. Choose circle detail and largest allowed radius. These describe local curvature, not proof that a designer used circles.
+- **Outlines, anchor markers and handles:** separate editable parts. Anchor shape and size are configurable; handle tips are filled circles.
+- **Modular grid, bounding frame, center marks and dimension brackets:** independent toggles. Dimension brackets are unlabelled geometry; use the web generator for measured labels.
+- **Tangent spines:** off by default, extended across the construction frame and rendered at 10% opacity.
+- **Appearance:** six palettes, independent outline/guide/circle/marker/background colours, stroke weight, marker size, solid/dashed/dotted guide and circle strokes, optional background and silhouette.
+- **Live preview:** controls redraw the construction on the canvas. Cancel clears it. Confirm commits the named container and its parts in one compound command, restoring the original selection. Generated Logo Grid containers are skipped on subsequent runs.
 
-The script is validated against the official 3.3.1 SDK module signatures and automated host mocks. It still needs an installation and geometry-alignment check inside Affinity Desktop before being treated as production-tested. Affinity scripting is currently beta.
+## Supported artwork and limits
 
-Official SDK: https://sdk.affinity.studio/33001/
+The native script reads the SDK’s curve interface for curves, shapes and text without converting or changing the original. It traverses groups and transforms geometry to spread coordinates. Imported clipping masks, raster images, effects and text with unusual layout may not expose the same geometry as their final rendered appearance. Use the **web SVG import** for those cases; do not assume the native script flattens masks. Earlier broad compatibility claims should not be taken as desktop validation.
+
+Preview follows a construction frame around the logo, with adjustable overshoot. The modular grid covers that frame. For an exact canvas, hatching, SVG text rendering, labelled measurements, comparison and MP4, use `generator.html` or https://logo-grid-generator.netlify.app/, then open/place the exported SVG back in Affinity.
+
+Geometry generation is capped at 30,000 elements. Circle output is capped at 64 and guides at 120 per axis. Reduce detail for complex artwork. Nothing uses the network or accesses files in the native script.
+
+## Validation
+
+Uses the official Affinity 3.3.3 JSLib signatures from https://sdk.affinity.studio/latest/. Automated tests exercise the exported entry point, analytic extrema, grouping, selection restoration, colours, dashed strokes, duplicate suppression, preview cancellation and error cleanup. **Affinity Desktop is not installed in the build environment: native dialog behaviour, live text geometry and spread alignment still need a real desktop check.** Affinity scripting remains beta. The ZIP is source plus a setup guide, not a verified native library export.
 
 Designed and developed by Coker Oluwafemi — https://cokeroluwafemi.com/.

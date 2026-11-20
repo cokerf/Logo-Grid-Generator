@@ -658,10 +658,10 @@ export function ControlPanel(p: Props) {
         <span>Logo Grid Generator</span>
         <span className="integration-downloads">
           <a
-            href={`${import.meta.env.BASE_URL}downloads/logo-grid-affinity.zip`}
-            download
+            href={`${import.meta.env.BASE_URL}affinity.html`}
+            target="_blank" rel="noreferrer"
           >
-            Affinity add-on
+            Affinity setup
           </a>
           <a
             href={`${import.meta.env.BASE_URL}downloads/logo-grid-figma-plugin.zip`}
