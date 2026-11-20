@@ -644,7 +644,6 @@ export default function App() {
           settings={settings}
           setSettings={setSettings}
           onUpload={() => fileRef.current?.click()}
-          onDemo={() => loadSVG(demo, "Example / coker-logo.svg")}
           onExport={onExport}
           hasSVG={mode==='compare'?!!compareBefore&&!!compareAfter:!!displayed}
           fileName={fileName}

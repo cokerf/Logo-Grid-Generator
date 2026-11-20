@@ -37,7 +37,6 @@ interface Props {
   settings: ExportSettings;
   setSettings: (s: ExportSettings) => void;
   onUpload: () => void;
-  onDemo: () => void;
   onExport: (format: "svg" | "png" | "mp4") => void;
   hasSVG: boolean;
   fileName: string;
@@ -56,7 +55,7 @@ export const Toggle = ({
   onChange: (b: boolean) => void;
 }) => (
   <label className="toggle-row">
-    {label}
+    <span className="control-label">{label}</span>
     <input
       className="toggle"
       type="checkbox"
@@ -72,7 +71,7 @@ export function ControlPanel(p: Props) {
   const { visibility: v, analysis: a, customization: c, settings: s } = p;
   const field = (label: string, child: React.ReactNode) => (
     <label className="field-row">
-      {label}
+      <span className="control-label">{label}</span>
       {child}
     </label>
   );
@@ -134,7 +133,7 @@ export function ControlPanel(p: Props) {
             </button>
           </div>
           {p.logoLibrary}
-</>}          <details className="font-settings"><summary>Typography <span>Font & live text</span></summary>
+</>}          <details className="font-settings"><summary><span className="font-heading">Typography</span><span className="font-description">Font & live text</span></summary>
           <div className="font-controls">
             <span>{p.fontName || "SVG text & fonts"}</span>
             <div>
@@ -653,19 +652,7 @@ export function ControlPanel(p: Props) {
             </div></details>
           </div>
         )}
-        {tab==="Artwork"&&!p.compareMode&&<div className="panel-section">
-          <button
-            className="secondary"
-            style={{ width: "100%" }}
-            onClick={p.onDemo}
-          >
-            Restore Coker example
-          </button>
-          <p className="hint">
-            Drag paths or control handles to refine geometry. Undo with Ctrl / ⌘
-            Z.
-          </p>
-        </div>}
+
       </div>
       <footer className="panel-footer">
         <span>Logo Grid Generator</span>

@@ -13,8 +13,8 @@ function PresetThumb({preset}:{preset:typeof drawingPresets[number]}){
 export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:CustomizationOptions;a:AnalysisOptions;v:Visibility;scale:number;setC:(c:CustomizationOptions)=>void;setA:(a:AnalysisOptions)=>void;setV:(v:Visibility)=>void;onInspect:()=>void}){
   const d=c.drafting||defaultDrafting;
   const update=(change:Partial<DraftingOptions>)=>setC({...c,...(change.hatch?{useOriginalColors:false}:{}),drafting:{...d,...change,presetId:undefined}});
-  const check=(label:string,value:boolean,onChange:(value:boolean)=>void)=><label className="toggle-row">{label}<input className="toggle" type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/></label>;
-  const field=(label:string,children:React.ReactNode)=><label className="field-row">{label}{children}</label>;
+  const check=(label:string,value:boolean,onChange:(value:boolean)=>void)=><label className="toggle-row"><span className="control-label">{label}</span><input className="toggle" type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/></label>;
+  const field=(label:string,children:React.ReactNode)=><label className="field-row"><span className="control-label">{label}</span>{children}</label>;
   const range=(label:string,key:keyof DraftingOptions,min:number,max:number,step=1)=>field(label,<input type="range" min={min} max={max} step={step} value={Number(d[key])} onChange={e=>update({[key]:Number(e.target.value)})}/>);
   const color=(label:string,key:'hatchColor'|'guideColor'|'cornerColor')=>field(label,<input type="color" value={d[key]} onChange={e=>update({[key]:e.target.value})}/>);
   return <>
