@@ -1,6 +1,8 @@
 import {importSVG} from './services/svgImport';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {prepareMorph,morphProgress,defaultMorph,type MorphOptions} from './services/morph';
+import {createComparisonSVG,defaultComparison,type ComparisonOptions} from './services/comparison';
+import {ComparisonPreview} from './components/ComparisonPreview';
+import {brandMark} from './services/brandMark';
 import { QuickMenu,type QuickAction } from "./components/QuickMenu";
 import { drawingPreset,drawingPresets } from "./services/drafting";
 import { fetchCuratedLogo } from "./services/logoLibrary";
@@ -110,6 +112,7 @@ export default function App() {
     } catch {}
     document.documentElement.style.colorScheme = theme;
   }, [theme]);
+  useEffect(()=>{let icon=document.querySelector<HTMLLinkElement>('link[rel="icon"]');if(!icon){icon=document.createElement('link');icon.rel='icon';document.head.append(icon);}icon.href=brandMark;},[]);
   const [font, setFont] = useState<UploadedFont | null>(null);
   const fontRef = useRef<UploadedFont | null>(null),
     fontInput = useRef<HTMLInputElement>(null);
@@ -156,7 +159,7 @@ export default function App() {
     [selected, setSelected] = useState<number | null>(null),
     [dragOver, setDragOver] = useState(false),
     [panel, setPanel] = useState(false);
-  const [mode, setMode] = useState<"inspect" | "morph" | "construct">("inspect"),
+  const [mode, setMode] = useState<"inspect" | "compare" | "construct">("inspect"),
     [playing, setPlaying] = useState(false),
     [time, setTime] = useState(0),
     [exportProgress, setExportProgress] = useState<number | null>(null),
@@ -166,14 +169,14 @@ export default function App() {
     abortRef = useRef<AbortController | null>(null),
     sourceNode = useRef<string | null>(null);
   const displayed = live || data;
-  const [morphFrom,setMorphFrom]=useState<ParsedSVG|null>(null),[morphTo,setMorphTo]=useState<ParsedSVG|null>(null);
-  const [morphNames,setMorphNames]=useState(['Current logo','Choose a second logo']);
-  const [morphOptions,setMorphOptions]=useState<MorphOptions>(defaultMorph);
-  const morphInputs=[useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null)];
-  const morphModel=React.useMemo(()=>{if(!morphFrom||!morphTo)return null;try{return prepareMorph(morphFrom,morphTo);}catch{return null;}},[morphFrom,morphTo]);
-  const morphData=React.useMemo(()=>morphModel?.(morphProgress(time,morphOptions)),[morphModel,time,morphOptions]);
-  const enterMorph=async()=>{loadSequence.current++;if(!morphFrom&&displayed){try{setMorphFrom(displayed.texts?.length?await importSVG(displayed.rawSVG,fontRef.current?.family,bundledFontCSS+(fontRef.current?.css||''),true):structuredClone(displayed));}catch(e){setError((e as Error).message);return;}setMorphNames(n=>[fileName.split(' / ').pop()||'First logo',n[1]]);}setMode('morph');setPlaying(false);setTime(0);};
-  const importMorph=async(file:File,index:number)=>{try{if(file.size>15_000_000)throw new Error('Please use an SVG smaller than 15 MB.');const parsed=await importSVG(await file.text(),fontRef.current?.family,bundledFontCSS+(fontRef.current?.css||''),true);(index===0?setMorphFrom:setMorphTo)(parsed);setMorphNames(n=>n.map((v,i)=>i===index?file.name:v));setTime(0);setPlaying(false);setError('');}catch(e){setError((e as Error).message);}};
+  const [compareBefore,setCompareBefore]=useState<ParsedSVG|null>(null),[compareAfter,setCompareAfter]=useState<ParsedSVG|null>(null);
+  const [compareNames,setCompareNames]=useState(['Current logo','Choose a second logo']);
+  const [comparison,setComparison]=useState<ComparisonOptions>(defaultComparison);
+  const compareInputs=[useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null)];
+  const enterComparison=()=>{loadSequence.current++;if(!compareBefore&&displayed){setCompareBefore(structuredClone(displayed));setCompareNames(n=>[fileName.split(' / ').pop()||'Current logo',n[1]]);}setMode('compare');setPlaying(false);setTime(.5);};
+  const comparisonRequests=useRef([0,0]);
+  const loadComparison=async(source:string,name:string,index:number)=>{const request=++comparisonRequests.current[index];try{const parsed=await importSVG(source,fontRef.current?.family,bundledFontCSS+(fontRef.current?.css||''));if(request!==comparisonRequests.current[index])return;(index===0?setCompareBefore:setCompareAfter)(parsed);setCompareNames(n=>n.map((v,i)=>i===index?name:v));setTime(.5);setPlaying(false);setError('');}catch(e){if(request===comparisonRequests.current[index])setError((e as Error).message);}};
+  const importComparison=async(file:File,index:number)=>{if(file.size>15_000_000){setError('Please use an SVG smaller than 15 MB.');return;}await loadComparison(await file.text(),file.name,index);};
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [board, setBoard] = useState({ width: 600, height: 750 });
@@ -288,7 +291,7 @@ export default function App() {
       }
       if (e.code === "Space") {
         e.preventDefault();
-        setMode(current=>current==='morph'?'morph':'construct');
+        setMode(current=>current==='compare'?'compare':'construct');
         setPlaying((p) => !p);
       }
     };
@@ -374,7 +377,9 @@ export default function App() {
     );
   const onExport = async (format: "svg" | "png" | "mp4") => {
     if (!svgRef.current) return;
-    if(mode==='morph'&&!morphModel){setError('Choose two SVG logos before exporting a morph.');return;}
+    if(mode==='compare'&&(!compareBefore||!compareAfter)){setError('Add both logos to export a comparison.');return;}
+    const exportSource=mode==='compare'?comparisonFrame(time):svgRef.current;
+    if(!exportSource)return;
     setError("");
     try {
       if (format === "svg")
@@ -383,7 +388,7 @@ export default function App() {
             [
               serializeSVG(
                 makeExportSVG(
-                  svgRef.current,
+                  exportSource,
                   settings,
                   customization.canvasBackground,
                 ),
@@ -395,7 +400,7 @@ export default function App() {
         );
       else if (format === "png")
         await exportPNG(
-          svgRef.current,
+          exportSource,
           settings,
           customization.canvasBackground,
         );
@@ -405,18 +410,14 @@ export default function App() {
         setPlaying(false);
         download(
           await exportMP4(
-            svgRef.current,
+            exportSource,
             settings,
             customization.canvasBackground,
             setExportProgress,
             abortRef.current.signal,
-            mode==='morph'&&morphModel ? (progress)=>{
-              const markup=renderToStaticMarkup(renderCanvas(morphModel(morphProgress(progress,morphOptions))));
-              const svg=new DOMParser().parseFromString(markup,'text/html').querySelector('svg');
-              if(!svg)throw new Error('Unable to render morph frame.');return svg as SVGSVGElement;
-            }:undefined,
+            mode==='compare' ? progress=>comparisonFrame(progress)!:undefined,
           ),
-          mode==='morph'?"logo-morph.mp4":"logo-construction.mp4",
+          mode==='compare'?"logo-comparison.mp4":"logo-construction.mp4",
         );
       }
     } catch (e) {
@@ -455,7 +456,7 @@ export default function App() {
     setCustomization(variation.customization);setAnalysis(variation.analysis);setVisibility(variation.visibility);
     const preset=motionPresets[Math.floor(Math.random()*motionPresets.length)];
     setSettings(current=>({...current,motion:preset.id,duration:preset.duration,ending:preset.id==='minimal'?'clean':'hold'}));
-    setTime(0);setPlaying(false);setMode(current=>current==='morph'?'morph':'inspect');setNotice(`${variation.name} · ${preset.name}`);
+    setTime(0);setPlaying(false);setMode(current=>current==='compare'?'compare':'inspect');setNotice(`${variation.name} · ${preset.name}`);
   };
   const shuffleLogo=async()=>{
     const current=logoCatalog.find(logo=>fileName===`WorldVectorLogo / ${logo.name}`)?.slug||'coker';
@@ -466,8 +467,8 @@ export default function App() {
     {label:'Shuffle logo & style',run:()=>void shuffleLogo()},
     {label:'Shuffle style',run:()=>shuffleStyle()},
     {label:'Import SVG',run:()=>fileRef.current?.click()},
-    {label:playing?'Pause':mode==='morph'?'Play morph':'Play construction',breakBefore:true,run:()=>{setMode(mode==='morph'?'morph':'construct');if(time>=1)setTime(0);setPlaying(!playing);}},
-    {label:'Morph',run:enterMorph},
+    {label:playing?'Pause':mode==='compare'?'Play comparison':'Play construction',breakBefore:true,run:()=>{setMode(mode==='compare'?'compare':'construct');if(time>=1)setTime(0);setPlaying(!playing);}},
+    {label:'Compare logos',run:enterComparison},
     {label:'Inspect',run:()=>{setMode('inspect');setPlaying(false);}},
     {label:'Canvas grid',breakBefore:true,checked:visibility.grid,run:()=>setVisibility({...visibility,grid:!visibility.grid})},
     {label:'Rulers',checked:visibility.rulers,run:()=>setVisibility({...visibility,rulers:!visibility.rulers})},
@@ -482,13 +483,12 @@ export default function App() {
     () => ({ displayed, analysis, customization, visibility, font }),
     [displayed, analysis, customization, visibility, font],
   );
-  const morphScale=1000/Math.max(displayed?.width||1000,displayed?.height||1000);
-  const canvasStyle=mode==='morph'?{...customization,path:{...customization.path,strokeWidth:customization.path.strokeWidth*morphScale},anchors:{...customization.anchors,size:customization.anchors.size*morphScale},handles:{...customization.handles,width:customization.handles.width*morphScale},outlines:{...customization.outlines,width:customization.outlines.width*morphScale},gridlines:{...customization.gridlines,width:customization.gridlines.width*morphScale},elementGuides:{...customization.elementGuides,width:customization.elementGuides.width*morphScale},alignmentGuides:{...customization.alignmentGuides,width:customization.alignmentGuides.width*morphScale}}:customization;
-  const renderCanvas=(frameData:ParsedSVG|null)=> (<Canvas
+  const renderCanvas=(frameData:ParsedSVG|null,aspect=settings.width/settings.height)=> {
+  const comparisonScale=Math.max(frameData?.width||1000,frameData?.height||1000)/Math.max(displayed?.width||1000,displayed?.height||1000);
+  const canvasStyle=mode==='compare'?{...customization,path:{...customization.path,strokeWidth:customization.path.strokeWidth*comparisonScale},anchors:{...customization.anchors,size:customization.anchors.size*comparisonScale},handles:{...customization.handles,width:customization.handles.width*comparisonScale},outlines:{...customization.outlines,width:customization.outlines.width*comparisonScale},gridlines:{...customization.gridlines,width:customization.gridlines.width*comparisonScale},elementGuides:{...customization.elementGuides,width:customization.elementGuides.width*comparisonScale},alignmentGuides:{...customization.alignmentGuides,width:customization.alignmentGuides.width*comparisonScale}}:customization;
+  return (<Canvas
                   svgData={frameData}
-                  canvasAspect={
-                    Math.max(settings.width, 1) / Math.max(settings.height, 1)
-                  }
+                  canvasAspect={aspect}
                   fontCSS={bundledFontCSS + (font?.css || "")}
                   svgRef={svgRef}
                   analysis={analysis}
@@ -499,7 +499,7 @@ export default function App() {
                   showElementGuides={visibility.elementGuides}
                   showAlignmentGuides={visibility.alignment}
                   showRulers={visibility.rulers}
-                  guides={mode==='morph'?[]:guides}
+                  guides={mode==='compare'?[]:guides}
                   onAddGuide={(orientation, position, id) =>
                     setGuides((g) => [
                       ...g,
@@ -519,7 +519,7 @@ export default function App() {
                   onHandleMove={moveHandle}
                   onPathMove={movePath}
                   snapToGrid={visibility.snap}
-                  selectedPathIndex={mode==='morph'?null:selected}
+                  selectedPathIndex={mode==='compare'?null:selected}
                   setSelectedPathIndex={setSelected}
                   onDragStart={() => {
                     if (data) setLive(structuredClone(data));
@@ -532,26 +532,32 @@ export default function App() {
                   onUploadClick={() => fileRef.current?.click()}
                   isDraggingOver={dragOver}
                   setIsDraggingOver={setDragOver}
-                />);
+                />);};
+  const comparisonTemplates=React.useMemo(()=>{
+    if(!compareBefore)return null;
+    const aspect=(settings.width/settings.height)/(comparison.layout==='side-by-side'?2:1);
+    const svg=(data:ParsedSVG)=>new DOMParser().parseFromString(renderToStaticMarkup(renderCanvas(data,aspect)),'text/html').querySelector('svg') as SVGSVGElement;
+    return {before:svg(compareBefore),after:compareAfter?svg(compareAfter):null};
+  },[compareBefore,compareAfter,customization,analysis,visibility,settings.width,settings.height,comparison.layout,font,displayed,mode]);
+  const comparisonFrame=useCallback((progress:number)=>comparisonTemplates?createComparisonSVG(comparisonTemplates.before,comparisonTemplates.after,settings,comparison,progress,customization.canvasBackground,customization.path.stroke):null,[comparisonTemplates,settings,comparison,customization.canvasBackground,customization.path.stroke]);
+  const comparisonControls=<div className="comparison-controls">
+    <h2 className="source-heading">Compare two logos</h2><p className="upload-intro">See the changes in shape, proportion and construction. Each logo stays intact.</p>
+    <div className="comparison-sources">{[0,1].map(index=><section className="comparison-source" key={index}>
+      <label>{index===0?'Before':'After'}<input aria-label={index===0?'Before label':'After label'} value={index===0?comparison.beforeLabel:comparison.afterLabel} maxLength={48} onChange={e=>setComparison({...comparison,[index===0?'beforeLabel':'afterLabel']:e.target.value})}/></label>
+      <button className="comparison-upload" onClick={()=>compareInputs[index].current?.click()}>Upload {index===0?'first':'second'} SVG</button><small>{compareNames[index]}</small>
+      <input hidden ref={compareInputs[index]} type="file" accept=".svg,image/svg+xml" onChange={e=>{const file=e.target.files?.[0];if(file)void importComparison(file,index);e.target.value='';}}/>
+      <select aria-label={index===0?'First comparison example':'Second comparison example'} value="" onChange={e=>{const logo=logoCatalog.find(l=>l.slug===e.target.value);if(!logo)return;void loadComparison(preloadedLogos[logo.slug],logo.name,index);}}><option value="">Or try an example</option>{logoCatalog.map(l=><option key={l.slug} value={l.slug}>{l.name}</option>)}</select>
+    </section>)}</div>
+    <div className="comparison-source-actions"><button disabled={!compareAfter} onClick={()=>{comparisonRequests.current=comparisonRequests.current.map(n=>n+1);setCompareBefore(compareAfter);setCompareAfter(compareBefore);setCompareNames([...compareNames].reverse());setComparison({...comparison,beforeLabel:comparison.afterLabel,afterLabel:comparison.beforeLabel});setPlaying(false);}}>Swap logos</button><button disabled={!displayed} onClick={()=>{comparisonRequests.current[0]++;setCompareBefore(structuredClone(displayed!));setCompareNames(n=>[fileName.split(' / ').pop()||'Current logo',n[1]]);}}>Use canvas as Before</button></div>
+    <fieldset className="comparison-layouts"><legend>Comparison view</legend>{[{id:'side-by-side',name:'Side by side',icon:'◧ ◨'},{id:'wipe',name:'Before / after',icon:'◀│▶'},{id:'overlay',name:'Overlay',icon:'▱▱'}].map(l=><button key={l.id} aria-pressed={comparison.layout===l.id} onClick={()=>{setComparison({...comparison,layout:l.id as ComparisonOptions['layout']});setTime(.5);setPlaying(false);}}><strong>{l.name}</strong></button>)}</fieldset>
+    {comparison.layout!=='side-by-side'&&<label className="field-row">{comparison.layout==='overlay'?'Blend between logos':'Reveal After logo'}<input type="range" min="0" max="1" step=".005" value={time} onChange={e=>{setTime(Number(e.target.value));setPlaying(false);}}/></label>}
+    <label className="toggle-row">Show comparison labels<input className="toggle" type="checkbox" checked={comparison.labels} onChange={e=>setComparison({...comparison,labels:e.target.checked})}/></label>
+    <details className="control-group"><summary>Comparison video</summary><div className="control-group-body"><label className="field-row">Duration (seconds)<input type="number" min="3" max="30" value={settings.duration} onChange={e=>setSettings({...settings,duration:Math.max(3,Math.min(30,Number(e.target.value)||3))})}/></label><label className="toggle-row">Draw construction in sequence<input className="toggle" type="checkbox" checked={comparison.construction} onChange={e=>setComparison({...comparison,construction:e.target.checked})}/></label><p className="hint">Use Export for size, frame rate, stills and video.</p></div></details>
+  </div>;
   return (
     <div className={`studio ${isPlugin ? "plugin" : ""}`} data-theme={theme} onContextMenu={e=>{if((e.target as HTMLElement).closest("input,textarea,select,[contenteditable]"))return;e.preventDefault();if(exportProgress===null)setQuickMenu({x:e.clientX,y:e.clientY});}}>
       <header className="topbar">
-        <svg
-          className="appmark"
-          viewBox="0 0 32 32"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M5 1V31M16 1V31M27 1V31M1 5H31M1 16H31M1 27H31"
-            stroke="currentColor"
-            opacity=".3"
-          />
-          <circle cx="16" cy="16" r="11" stroke="currentColor" />
-          <path d="M5 16C5 1 27 31 27 16" stroke="currentColor" />
-          <rect x="3" y="14" width="4" height="4" fill="currentColor" />
-          <rect x="25" y="14" width="4" height="4" fill="currentColor" />
-        </svg>
+        <img className="appmark" src={brandMark} alt=""/>
         <h1 className="brand">Logo Grid Generator</h1>
         <span className="version">Construction studio</span>
         <button
@@ -606,7 +612,8 @@ export default function App() {
       />
       <div className="workspace">
         <ControlPanel
-          morphMode={mode==='morph'}
+          compareMode={mode==='compare'}
+          comparisonControls={comparisonControls}
           onFontUpload={() => fontInput.current?.click()}
           fontName={font?.name || ""}
           onClearFont={() => {
@@ -622,7 +629,7 @@ export default function App() {
             )
           }
           logoScale={Math.max(displayed?.width||1000,displayed?.height||1000)}
-          onInspect={()=>{setMode(current=>current==='morph'?'morph':'inspect');setPlaying(false);}}
+          onInspect={()=>{setMode(current=>current==='compare'?'compare':'inspect');setPlaying(false);}}
           logoLibrary={<LogoLibrary onShuffle={()=>void shuffleLogo()} currentName={fileName} onStyle={() => shuffleStyle()} onShuffleLoad={async (svg,name) => { const success=await loadSVG(svg,name); if(success)shuffleStyle(parseSVG(svg,fontRef.current?.family)); return success; }} onLoad={loadSVG} onFallback={(message) => { void loadSVG(demo, "Example / coker-logo.svg"); setNotice(message); }} />}
           open={panel}
           visibility={visibility}
@@ -642,7 +649,7 @@ export default function App() {
           plugin={isPlugin}
           onInsert={insert}
           onPreviewMotion={() => {
-            setMode(current=>current==='morph'?'morph':'construct');
+            setMode(current=>current==='compare'?'compare':'construct');
             setTime(0);
             setPlaying(true);
           }}
@@ -666,7 +673,7 @@ export default function App() {
               >
                 Inspect
               </button>
-              <button onClick={enterMorph} className={mode==='morph'?'selected-mode':''}>Morph</button>
+              <button onClick={enterComparison} className={mode==='compare'?'selected-mode':''}>Compare</button>
               <button
                 onClick={() => {
                   setMode("construct");
@@ -680,11 +687,11 @@ export default function App() {
             <div>
               {mode !== "inspect" ? (
                 <>
-                  <PlaybackButton label={mode==='morph'?'morph':'construction'} playing={playing} progress={time} onClick={() => { if(mode==='morph'&&!morphModel)return; if(time>=1)setTime(0); setPlaying(!playing); }} />
+                  <PlaybackButton label={mode==='compare'?'comparison':'construction'} playing={playing} progress={time} onClick={() => { if(mode==='compare'&&!compareAfter)return; if(time>=1)setTime(0); setPlaying(!playing); }} />
                   <span className="timecode">{(time*settings.duration).toFixed(1)}<span> / {settings.duration}s</span></span>
                   <input
                     className="timeline"
-                    aria-label={mode==='morph'?'Morph progress':'Construction progress'}
+                    aria-label={mode==='compare'?'Comparison position':'Construction progress'}
                     type="range"
                     min="0"
                     max="1"
@@ -709,21 +716,6 @@ export default function App() {
               )}
             </div>
           </div>
-          {mode==='morph'&&<div className="morph-controls" aria-label="Morph controls">
-            <div className="morph-presets" aria-label="Morph animation presets">{[{name:'Evolution',duration:8,easing:'cinematic',direction:'forward',hold:.12},{name:'Slow study',duration:12,easing:'smooth',direction:'forward',hold:.18},{name:'Continuous loop',duration:10,easing:'smooth',direction:'roundtrip',hold:.08}].map(p=><button key={p.name} aria-pressed={settings.duration===p.duration&&morphOptions.easing===p.easing&&morphOptions.direction===p.direction&&morphOptions.hold===p.hold} onClick={()=>{setMorphOptions({easing:p.easing as MorphOptions['easing'],direction:p.direction as MorphOptions['direction'],hold:p.hold});setSettings({...settings,duration:p.duration});setTime(0);setPlaying(false);}}>{p.name}</button>)}</div>
-            {[0,1].map(index=><div className="morph-source" key={index}>
-              <span>{index===0?'From':'To'}</span><button onClick={()=>morphInputs[index].current?.click()}>{morphNames[index]}</button>
-              <input hidden ref={morphInputs[index]} type="file" accept=".svg,image/svg+xml" onChange={e=>{const file=e.target.files?.[0];if(file)void importMorph(file,index);e.target.value='';}}/>
-              <select aria-label={index===0?'First morph logo':'Second morph logo'} value="" onChange={e=>{if(!e.target.value)return;const logo=logoCatalog.find(l=>l.slug===e.target.value)!;const parsed=parseSVG(preloadedLogos[logo.slug]);(index===0?setMorphFrom:setMorphTo)(parsed);setMorphNames(n=>n.map((v,i)=>i===index?logo.name:v));setPlaying(false);setTime(0);}}><option value="">Choose a logo</option>{logoCatalog.map(l=><option value={l.slug} key={l.slug}>{l.name}</option>)}</select>
-            </div>)}
-            <button disabled={!morphFrom||!morphTo} onClick={()=>{setMorphFrom(morphTo);setMorphTo(morphFrom);setMorphNames([...morphNames].reverse());setTime(0);setPlaying(false);}}>Swap</button>
-            <label>Easing<select value={morphOptions.easing} onChange={e=>setMorphOptions({...morphOptions,easing:e.target.value as MorphOptions['easing']})}><option value="cinematic">Cinematic</option><option value="smooth">Smooth</option><option value="linear">Linear</option></select></label>
-            <label>Direction<select value={morphOptions.direction} onChange={e=>setMorphOptions({...morphOptions,direction:e.target.value as MorphOptions['direction']})}><option value="forward">From → To</option><option value="reverse">To → From</option><option value="roundtrip">Round trip</option></select></label>
-            <label>Duration (s)<input type="number" min="3" max="30" value={settings.duration} onChange={e=>setSettings({...settings,duration:Math.max(3,Math.min(30,Number(e.target.value)||3))})}/></label>
-            <label>End hold (%)<input type="number" min="0" max="30" value={Math.round(morphOptions.hold*100)} onChange={e=>setMorphOptions({...morphOptions,hold:Math.max(0,Math.min(.3,Number(e.target.value)/100))})}/></label>
-            {(morphFrom?.texts?.length||morphTo?.texts?.length)?<p className="morph-hint">Live lettering dissolves between logos. Expand text to paths for a shape morph.</p>:null}
-            <button className="primary" disabled={!morphModel} onClick={()=>void onExport('mp4')}>Export morph</button>
-          </div>}
           <div className="aspect-presets" aria-label="Canvas proportions">
             {[
               [1080, 1080, "1:1"],
@@ -758,12 +750,13 @@ export default function App() {
               <div
                 style={{
                   height: "100%",
-                  visibility: mode === "construct" ? "hidden" : "visible",
-                  pointerEvents: mode==='morph'?'none':undefined,
+                  visibility: mode !== 'inspect' ? 'hidden' : 'visible',
+                  pointerEvents: mode==='compare'?'none':undefined,
                 }}
               >
-                {renderCanvas(mode==='morph'?(morphData||morphFrom||displayed):displayed)}
+                {renderCanvas(displayed)}
               </div>
+              {mode==='compare'&&<ComparisonPreview frame={comparisonFrame} progress={time}/>}
               {mode === "construct" && (
                 <Preview
                   source={svgRef}

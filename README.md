@@ -36,7 +36,7 @@ The production website is generated in `dist/`. Deploy that directory to a stati
 
 Use an SVG up to 15 MB. Choose **Upload your logo** or drag your own file onto the canvas; the preloaded artwork is an example. Live `<text>`, `<tspan>`, and `<textPath>` lettering is supported alongside paths, rectangles (including rounded corners), circles, ellipses, lines, polygons, and polylines, including nested group transforms, relative coordinates, repeated commands, smooth curves, quadratic curves, and elliptical arcs. Geometry is normalized into absolute line, cubic, and quadratic segments before editing.
 
-Instances, symbols, clipping masks, gradients, filters, strokes and embedded images are prepared automatically. Simple geometry stays editable, and ordinary live text stays live in Inspect and Construction. Complex artwork is rendered and traced into construction contours; its rendered colours are retained for Original logo colours. Morph automatically traces unexpanded lettering. Upload a TTF, OTF, WOFF or WOFF2 font through Typography when the original font is unavailable. Uploaded fonts stay local and are embedded in exports; Archivo is bundled. Scripts and event handlers are removed, and linked images must be accessible to be embedded. See Import without manual preparation below for tracing precision and asset limits.
+Instances, symbols, clipping masks, gradients, filters, strokes and embedded images are prepared automatically. Simple geometry stays editable, and ordinary live text stays live in Inspect and Construction. Complex artwork is rendered and traced into construction contours; its rendered colours are retained for Original logo colours. Compare keeps live lettering intact. Upload a TTF, OTF, WOFF or WOFF2 font through Typography when the original font is unavailable. Uploaded fonts stay local and are embedded in exports; Archivo is bundled. Scripts and event handlers are removed, and linked images must be accessible to be embedded. See Import without manual preparation below for tracing precision and asset limits.
 
 Drag a path to move it; drag its control points with Control handles enabled. Drag from a ruler to add a guide; drag it outside the canvas to remove it. Ctrl/⌘ Z undoes a geometry edit, Shift Ctrl/⌘ Z or Ctrl Y redoes it. Space plays or pauses construction. Keyboard shortcuts leave focused form inputs alone.
 
@@ -157,20 +157,20 @@ Right-click the studio or canvas for shuffle, import, play/pause, inspect, grid,
 
 The Style tab has fourteen coordinated palettes with matched backgrounds, logo ink, hatch colour, guides and markers. Startup chooses a colourful drawing style; the light interface theme remains the default. Measured mono remains available as a deliberate monochrome option.
 
-### Logo evolution with Morph
+### Compare logo versions
 
-Open **Morph**, between Inspect and Construction. The current logo becomes the first SVG; upload a second SVG or choose one from the curated library. Either input can be replaced independently, and **Swap** reverses their order without changing your original artwork.
+Open **Compare**, between Inspect and Construction. Upload a Before and After SVG independently, or choose examples for either slot. The current canvas can become Before, and Swap exchanges both logos and labels.
 
-Evolution, Slow study and Continuous loop presets coordinate timing and easing. Scrub any frame, play/pause, set duration and endpoint holds, or reverse the transition. Active drawing colours, hatching, construction guides, markers, tangents and rulers follow the evolving geometry. SVG and PNG save the current frame; **Export morph** saves a frame-by-frame H.264 MP4 using the shared export dimensions, frame rate, quality and ruler settings.
+Side by side shows the versions together. Before / after reveals the second logo with a wipe. Overlay blends the two aligned drawings. Original paths, colours, counters and live lettering stay intact; comparison does not invent intermediate geometry. Use the position slider to inspect a difference, and enable construction in sequence for a two-stage drawing presentation. The same composed scene is used for SVG, PNG and MP4 exports. Labels can be edited or hidden.
 
-Paper.js matches contours by size and location, aligns their starting points, and grows or collapses unmatched parts. Original vector contours are preserved at both endpoints; intermediate contours are sampled. Different logos can have very different structures, so automatic correspondence may produce intersections during a transition. Uploaded live text and textPath are automatically outlined for a geometric morph. Existing live text remains editable in Inspect and Construction.
+The sidebar is arranged by task: **Artwork** for uploads, examples and comparison inputs; **Drawing** for logo treatment, curve layers, presets and construction overlays; **Canvas** for the palette, workspace and grid; **Export** for output size, format and video settings. Less-used settings sit in labelled expandable groups, and navigation stays visible while scrolling. The header and favicon now use the same icon.
 
 Randomized styles always leave tangent spines off. Enable them manually in Construction layers or from the right-click menu whenever needed.
 
 
 ### Import without manual preparation
 
-The editor now automatically prepares SVG instances, symbols, clipping paths, masks, stroke artwork, gradients, patterns, filters and embedded images. Ordinary paths stay editable, and ordinary text/textPath stays live in Inspect and Construction. Morph automatically traces unexpanded lettering into glyph contours.
+The editor now automatically prepares SVG instances, symbols, clipping paths, masks, stroke artwork, gradients, patterns, filters and embedded images. Ordinary paths stay editable, and ordinary text/textPath stays live in Inspect and Construction. Compare preserves both logos without requiring outlined lettering.
 
 When a file needs rendering, the browser resolves its visible appearance at up to 2048 pixels on the longest side, and Paper.js simplifies the traced silhouette into construction paths. This is a visual approximation for effect-heavy artwork; the original rendered colours remain available through Logo fill and Original logo colours. A soft mask produces a thresholded construction outline while the original rendering retains its transparency. Linked images are fetched and embedded when their server permits it. Broken XML, missing assets and unavailable fonts cannot be reconstructed from the file alone; upload its font or include its linked images where needed. Files up to 15 MB are supported.
 
@@ -180,7 +180,7 @@ The refreshed workspace uses a slimmer toolbar, clear artwork controls, larger s
 
 Drawing → Logo appearance switches between Outline, Hatched, Solid colour and Original colours. Original colours enables the logo fill and takes precedence over hatching while keeping the construction overlays. Style → Original logo colours also activates the fill in one action. Palette changes preserve the original-colour choice.
 
-Drawing → Construction frameworks adds Modular, Isometric, Radial, Golden ratio, Rule of thirds and Baseline overlays. Choose the canvas or logo bounds, then set divisions, rotation, offsets, line style, colour, opacity and weight. Reference circles and diagonal cross-lines are optional. These are editable proportional references, not claims that a logo follows the golden ratio or any other system. They render through the shared canvas in stills, construction films and Morph.
+Drawing → Construction frameworks adds Modular, Isometric, Radial, Golden ratio, Rule of thirds and Baseline overlays. Choose the canvas or logo bounds, then set divisions, rotation, offsets, line style, colour, opacity and weight. Reference circles and diagonal cross-lines are optional. These are editable proportional references, not claims that a logo follows the golden ratio or any other system. They render through the shared canvas in stills, construction films and Compare.
 
 Export → Include canvas grid is enabled by default. It exports a grid that is switched on in the workspace and retains it through a clean video ending. Disable the export checkbox to omit it while keeping it visible in the editor. Tangent spines now default to 14% opacity with a thinner stroke; enable them manually, then adjust their opacity, weight and line style in Geometry. Shuffling never enables tangent spines.
 

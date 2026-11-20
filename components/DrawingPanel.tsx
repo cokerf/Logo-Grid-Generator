@@ -22,15 +22,16 @@ export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:Customiza
       {field('Logo appearance',<select value={logoAppearance(c)} onChange={e=>setC(setLogoAppearance(c,e.target.value as LogoAppearance))}><option value="outline">Outline</option><option value="hatch">Hatched</option><option value="solid">Solid colour</option><option value="original">Original colours</option></select>)}
       <p className="hint">Original colours keep the logo in full colour with your construction overlays.</p>
     </div>
-    <div className="section-title"><span>Drawing presets</span><span>Editable geometry</span></div>
+    <details className="control-group"><summary>Drawing presets</summary><div className="control-group-body">
     <div className="drawing-presets">{drawingPresets.map(p=><button key={p.id} className={d.presetId===p.id?'active':''} aria-pressed={d.presetId===p.id} onClick={()=>{const result=drawingPreset(p.id,c,a,v,scale);setC(result.customization);setA(result.analysis);setV(result.visibility);onInspect();}}><PresetThumb preset={p}/><strong>{p.name}</strong><span>{p.description}</span></button>)}</div>
-    <FrameworkPanel c={c} setC={setC}/>
-    <div className="drawing-group"><div className="section-title"><span>Shading</span></div>
+    </div></details>
+    <details className="control-group"><summary>Construction frameworks</summary><div className="control-group-body"><FrameworkPanel c={c} setC={setC}/></div></details>
+    <details className="control-group"><summary>Shading</summary><div className="control-group-body">
       {check('Diagonal hatch fill',d.hatch,value=>update({hatch:value}))}
       {d.hatch&&<>{range('Hatch angle','hatchAngle',-90,90,1)}{range('Hatch spacing','hatchSpacing',3,24,.5)}{range('Hatch weight','hatchWidth',.2,2,.1)}{range('Hatch opacity','hatchOpacity',.1,1,.05)}{color('Hatch colour','hatchColor')}</>}
       <p className="hint">Shade the logo while keeping its cutouts clear. Hatching works independently of Logo fill.</p>
-    </div>
-    <div className="drawing-group"><div className="section-title"><span>Construction lines</span></div>
+    </div></details>
+    <details className="control-group"><summary>Construction lines</summary><div className="control-group-body">
       {check('Extended construction guides',d.guides,value=>update({guides:value}))}
       {d.guides&&<>
         {field('Guide directions',<select value={d.guideAxes} onChange={e=>update({guideAxes:e.target.value as DraftingOptions['guideAxes']})}><option value="orthogonal">Horizontal & vertical</option><option value="diagonal">Diagonal</option><option value="both">All directions</option></select>)}
@@ -39,8 +40,8 @@ export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:Customiza
         {d.guideAxes!=='orthogonal'&&<>{field('Diagonal source',<select value={d.diagonalSource} onChange={e=>update({diagonalSource:e.target.value as DraftingOptions['diagonalSource']})}><option value="edges">Logo edges, with angle fallback</option><option value="angle">Custom angle</option></select>)}{range('Diagonal angle','diagonalAngle',-85,85)}</>}
         {range('Guide count per direction','guideLimit',4,48)}{range('Guide weight','guideWidth',.2,1.5,.1)}{range('Guide opacity','guideOpacity',.1,.8,.05)}{color('Guide colour','guideColor')}
       </>}
-    </div>
-    <div className="drawing-group"><div className="section-title"><span>Markers</span></div>
+    </div></details>
+    <details className="control-group"><summary>Markers</summary><div className="control-group-body">
       {check('Anchor markers',v.anchors,value=>setV({...v,anchors:value}))}
       {field('Anchor marker shape',<select value={c.anchors.shape} onChange={e=>setC({...c,anchors:{...c.anchors,shape:e.target.value as CustomizationOptions['anchors']['shape']}})}>{['square','circle','cross','diamond'].map(shape=><option key={shape} value={shape}>{shape[0].toUpperCase()+shape.slice(1)}</option>)}</select>)}
       {field('Anchor marker size',<input type="range" min="1" max="9" step=".5" value={c.anchors.size/Math.max(scale,1)*1000} onChange={e=>setC({...c,anchors:{...c.anchors,size:Number(e.target.value)*Math.max(scale,1)/1000}})}/>)}
@@ -48,8 +49,8 @@ export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:Customiza
       {check('Corner markers',d.cornerMarkers,value=>update({cornerMarkers:value}))}
       {d.cornerMarkers&&<>{field('Corner shape',<select value={d.cornerShape} onChange={e=>update({cornerShape:e.target.value as DraftingOptions['cornerShape']})}>{['circle','square','cross','diamond'].map(shape=><option key={shape} value={shape}>{shape[0].toUpperCase()+shape.slice(1)}</option>)}</select>)}{check('Hollow corner markers',d.cornerHollow,value=>update({cornerHollow:value}))}{range('Corner marker size','cornerSize',2,10,.5)}{color('Corner colour','cornerColor')}</>}
       {range('Clear space (logo height)','clearspace',0,.15,.01)}
-    </div>
-    <div className="drawing-group"><div className="section-title"><span>Proportions</span></div>
+    </div></details>
+    <details className="control-group"><summary>Proportions</summary><div className="control-group-body">
       {check('Proportion measurements',d.proportions,value=>update({proportions:value}))}
       {d.proportions&&<>
         {field('Units across logo height',<input type="number" min=".1" max="100" step=".1" value={d.heightUnits} onChange={e=>update({heightUnits:Math.max(.1,Math.min(100,Number(e.target.value)||.1))})}/>)}
@@ -57,7 +58,7 @@ export function DrawingPanel({c,a,v,scale,setC,setA,setV,onInspect}:{c:Customiza
         {range('Measurement label size','labelSize',8,22)}
         <p className="hint">One x is logo height ÷ {d.heightUnits}. Guides follow the actual components and gaps. Leave dividers blank for automatic measurement, or enter percentages to override.</p>
       </>}
-    </div>
+    </div></details>
     <button className="secondary drawing-reset" onClick={()=>{setC({...c,drafting:{...defaultDrafting},framework:c.framework?{...c.framework,enabled:false}:undefined});setV({...v,anchors:false});}}>Reset drawing overlays</button>
   </>;
 }

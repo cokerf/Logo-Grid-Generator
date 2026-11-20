@@ -1,3 +1,4 @@
+import {createComparisonSVG,defaultComparison} from '../services/comparison';
 import {importSVG} from '../services/svgImport';
 import clippedFixture from './fixtures/clipped-symbol-mask.svg?raw';
 import letteringFixture from './fixtures/live-lettering.svg?raw';
@@ -35,6 +36,20 @@ await test("Prepare unexpanded textPath lettering for a geometric morph",async()
   const parsed=await importSVG(letteringFixture,undefined,'',true);
   assert(parsed.paths.length>0&&!parsed.texts?.length,'Lettering did not become morphable contours');
   assert(parsed.paths[0].points.length>20,'Glyph contours are missing');
+});
+await test("Comparison keeps the two original drawings intact in every layout",()=>{
+  const left=document.createElementNS('http://www.w3.org/2000/svg','svg'),right=left.cloneNode() as SVGSVGElement;
+  left.setAttribute('viewBox','0 0 100 100');right.setAttribute('viewBox','0 0 100 100');
+  left.innerHTML='<path data-logo="true" d="M10 10L90 10L50 90Z" fill="#fa3044"/>';
+  right.innerHTML='<circle data-logo="true" cx="50" cy="50" r="35" fill="#314aff"/>';
+  const settings={width:1080,height:1350,duration:3,fps:24,quality:'high',ending:'hold',includeGuides:true,includeGrid:true,includeRulers:true,transparent:false} as ExportSettings;
+  for(const layout of ['side-by-side','wipe','overlay'] as const)for(const t of [0,.5,1]){
+    const scene=createComparisonSVG(left,right,settings,{...defaultComparison,layout},t,'#fff','#222');
+    assert(scene.querySelector('path')?.getAttribute('d')==='M10 10L90 10L50 90Z','Before geometry was distorted');
+    assert(scene.querySelector('circle')?.getAttribute('r')==='35','After geometry was distorted');
+    assert(scene.querySelector('path')?.getAttribute('fill')==='#fa3044','Original colour lost');
+    assert(scene.querySelectorAll('text').length===2,'Comparison labels missing');
+  }
 });
 const ns = "http://www.w3.org/2000/svg";
 await test("Repeated coordinates, compact negative numbers, exponents and relative commands", () => {
@@ -225,6 +240,7 @@ await test("Workspace renders and construction controls update the visible canva
     b!.click();
     await new Promise((r) => setTimeout(r, 80));
   };
+  await click("Drawing");
   const curvature = Array.from(doc.querySelectorAll("button"))
     .find((b) => b.textContent?.trim() === "Dimension guides");
   assert(curvature, "Missing dimensions toggle");

@@ -276,3 +276,15 @@ test('original colours override hatching and activate fill without discarding co
  assert.equal(logoAppearance({...full,drafting:{...full.drafting!,hatch:true}}),'original');
  for(const appearance of ['hatch','solid','outline'] as const)assert.equal(logoAppearance(setLogoAppearance(full,appearance)),appearance);
 });
+
+import {comparisonLayout} from '../services/comparison.ts';
+test('comparison layout preserves independent panels and clamps wipe/overlay endpoints',()=>{
+ assert.equal(comparisonLayout(1080,1350,'side-by-side',.5).panelWidth,540);
+ assert.equal(comparisonLayout(1001,800,'side-by-side',.5).panelWidth,501);
+ assert.equal(comparisonLayout(1080,1350,'wipe',0).divider,1080);
+ assert.equal(comparisonLayout(1080,1350,'wipe',1).divider,0);
+ assert.equal(comparisonLayout(1080,1350,'overlay',.5).beforeOpacity,.5);
+ assert.equal(comparisonLayout(1080,1350,'overlay',.5).afterOpacity,.5);
+ assert.equal(comparisonLayout(1080,1350,'overlay',-1).afterOpacity,0);
+ assert.equal(comparisonLayout(1080,1350,'overlay',2).afterOpacity,1);
+});

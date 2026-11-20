@@ -1,9 +1,8 @@
-import {setLogoAppearance} from '../services/appearance';
 import { motionPresets, type MotionPreset } from "../services/motion";
 import {studioPalettes} from "../services/styleVariation";
 import { DrawingPanel } from "./DrawingPanel";
 import { ConstructionIcon } from "./ConstructionIcon";
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import type { CustomizationOptions } from "../types";
 import type { AnalysisOptions } from "./AnalysisLayers";
 import type { ExportSettings } from "../services/exporter";
@@ -18,7 +17,8 @@ export type Visibility = {
   snap: boolean;
 };
 interface Props {
-  morphMode?:boolean;
+  compareMode?:boolean;
+  comparisonControls?:React.ReactNode;
   logoLibrary: React.ReactNode;
   logoScale:number;
   onInspect:()=>void;
@@ -66,7 +66,8 @@ export const Toggle = ({
   </label>
 );
 export function ControlPanel(p: Props) {
-  const [tab, setTab] = useState("Geometry");
+  const [tab, setTab] = useState("Artwork");
+  useEffect(()=>{if(p.compareMode)setTab("Artwork");},[p.compareMode]);
   const [format, setFormat] = useState<"svg" | "png" | "mp4">("mp4");
   const { visibility: v, analysis: a, customization: c, settings: s } = p;
   const field = (label: string, child: React.ReactNode) => (
@@ -103,9 +104,21 @@ export function ControlPanel(p: Props) {
       className={`inspector ${p.open ? "is-open" : ""}`}
       aria-label="Generator settings"
     >
-      <div className="panel-scroll">
-        <div className="panel-section source-section">
-          <h2 className="source-heading">Start with your logo</h2>
+          <div className="tabs" role="tablist">
+            {["Artwork", "Drawing", "Canvas", "Export"].map((t) => (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={t === tab}
+                className={t === tab ? "active" : ""}
+                onClick={() => setTab(t)}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+      <div className="panel-scroll" key={tab}>
+        {tab==="Artwork"&&<div className="panel-section source-section">{p.compareMode?p.comparisonControls:<>          <h2 className="source-heading">Start with your logo</h2>
           <p className="upload-intro">The canvas starts with an example. Upload your own SVG to make it yours.</p>
           <div className="primary-actions">
             <button className="upload-btn" onClick={p.onUpload}>
@@ -115,12 +128,32 @@ export function ControlPanel(p: Props) {
             <button
               className="create-video"
               disabled={!p.hasSVG}
-              onClick={() => p.onExport("mp4")}
+              onClick={() => setTab("Export")}
             >
-              Create video
+              Export settings
             </button>
           </div>
           {p.logoLibrary}
+</>}          <details className="font-settings"><summary>Typography <span>Font & live text</span></summary>
+          <div className="font-controls">
+            <span>{p.fontName || "SVG text & fonts"}</span>
+            <div>
+              <button onClick={p.onFontUpload}>Upload font</button>
+              {p.fontName && <button onClick={p.onClearFont}>Reset</button>}
+              <button onClick={p.onTextDemo}>Try live text</button>
+            </div>
+          </div>
+          </details>
+          {p.textCount > 0 && (
+            <p className="hint">
+              Text stays live. Upload the original font if the lettering looks
+              different. Curve controls apply to vector paths.
+            </p>
+          )}
+        </div>}
+        {tab!=="Artwork"&&<div className="panel-section">
+          {tab === "Drawing" && (
+            <>
           <div className="layer-gallery" aria-label="Construction layers">
             {(
               [
@@ -143,39 +176,7 @@ export function ControlPanel(p: Props) {
               </button>
             ))}
           </div>
-          <details className="font-settings"><summary>Typography <span>Font & live text</span></summary>
-          <div className="font-controls">
-            <span>{p.fontName || "SVG text & fonts"}</span>
-            <div>
-              <button onClick={p.onFontUpload}>Upload font</button>
-              {p.fontName && <button onClick={p.onClearFont}>Reset</button>}
-              <button onClick={p.onTextDemo}>Try live text</button>
-            </div>
-          </div>
-          </details>
-          {p.textCount > 0 && (
-            <p className="hint">
-              Text stays live. Upload the original font if the lettering looks
-              different. Curve controls apply to vector paths.
-            </p>
-          )}
-        </div>
-        <div className="panel-section">
-          <div className="tabs" role="tablist">
-            {["Geometry", "Drawing", "Style", "Export"].map((t) => (
-              <button
-                key={t}
-                role="tab"
-                aria-selected={t === tab}
-                className={t === tab ? "active" : ""}
-                onClick={() => setTab(t)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          {tab === "Geometry" && (
-            <>
+              <details className="control-group"><summary>Curve analysis settings</summary><div className="control-group-body">
               <div className="section-title">
                 <span>Curve detail</span>
                 <span>01</span>
@@ -204,16 +205,17 @@ export function ControlPanel(p: Props) {
               <p className="hint">
                 Adjust the guides to suit your composition.
               </p>
+              </div></details>
             </>
           )}
           {tab === "Drawing" && <DrawingPanel c={c} a={a} v={v} scale={p.logoScale} setC={p.setCustomization} setA={p.setAnalysis} setV={p.setVisibility} onInspect={p.onInspect}/>}
-          {tab === "Style" && (
+          {tab === "Canvas" && (
             <>
               <div className="section-title">
                 <span>APPEARANCE</span>
                 <span>02</span>
               </div>
-              <div className="palette-presets">
+              <details className="control-group"><summary>Colour palettes</summary><div className="control-group-body"><div className="palette-presets">
                 {studioPalettes.map(({name,background:bg,ink:fg,accent}) => (
                   <button
                     key={name}
@@ -243,18 +245,7 @@ export function ControlPanel(p: Props) {
                   </button>
                 ))}
               </div>
-              <Toggle
-                label="Original logo colours"
-                value={!!c.useOriginalColors}
-                onChange={(value) =>
-                  p.setCustomization(value?setLogoAppearance(c,'original'):{...c,useOriginalColors:false})
-                }
-              />
-              <Toggle
-                label="Logo fill"
-                value={c.showFill}
-                onChange={(b) => p.setCustomization({ ...c, showFill: b })}
-              />
+              </div></details>
               {field(
                 "Canvas",
                 color(c.canvasBackground, (b) =>
@@ -290,6 +281,7 @@ export function ControlPanel(p: Props) {
                   }),
                 ),
               )}
+              <details className="control-group"><summary>Line & marker settings</summary><div className="control-group-body">
               {field(
                 "Stroke width",
                 range(
@@ -338,6 +330,7 @@ export function ControlPanel(p: Props) {
                   <option value="diamond">Diamond</option>
                 </select>,
               )}
+              </div></details>
             </>
           )}
           {tab === "Export" && (
@@ -352,7 +345,7 @@ export function ControlPanel(p: Props) {
                   value={format}
                   onChange={(e) => setFormat(e.target.value as typeof format)}
                 >
-                  <option value="mp4">{p.morphMode?"Morph · MP4":"Construction · MP4"}</option>
+                  <option value="mp4">{p.compareMode?"Comparison · MP4":"Construction · MP4"}</option>
                   <option value="png">Still · PNG</option>
                   <option value="svg">Vector · SVG</option>
                 </select>,
@@ -417,7 +410,7 @@ export function ControlPanel(p: Props) {
               </div>
               {format === "mp4" ? (
                 <>
-                  {!p.morphMode&&<div className="motion-presets" aria-label="Motion presets">
+                  {!p.compareMode&&<div className="motion-presets" aria-label="Motion presets">
                     {motionPresets.map((preset) => (
                       <button
                         key={preset.id}
@@ -506,7 +499,7 @@ export function ControlPanel(p: Props) {
                       <option value="high">High</option>
                     </select>,
                   )}
-                  {!p.morphMode&&field(
+                  {!p.compareMode&&field(
                     "Finish",
                     <select
                       value={s.ending}
@@ -561,15 +554,14 @@ export function ControlPanel(p: Props) {
               )}
             </>
           )}
-        </div>
-        {(tab === "Geometry" || tab === "Style") && (
+        </div>}
+        {tab === "Canvas" && (
           <div className="panel-section">
             <div className="section-title">
-              <span>{tab === "Geometry" ? "WORKSPACE" : "GRID"}</span>
+              <span>Canvas & editing aids</span>
               <span>⌘</span>
             </div>
-            {tab === "Geometry" ? (
-              <>
+            <>
                 {(
                   [
                     ["anchors", "Anchor points"],
@@ -589,9 +581,7 @@ export function ControlPanel(p: Props) {
                     onChange={(b) => p.setVisibility({ ...v, [key]: b })}
                   />
                 ))}
-              </>
-            ) : (
-              <>
+            </><details className="control-group"><summary>Grid layout</summary><div className="control-group-body">
                 {field(
                   "Grid type",
                   <select
@@ -660,23 +650,22 @@ export function ControlPanel(p: Props) {
                     )}
                   </>
                 )}
-              </>
-            )}
+            </div></details>
           </div>
         )}
-        <div className="panel-section">
+        {tab==="Artwork"&&!p.compareMode&&<div className="panel-section">
           <button
             className="secondary"
             style={{ width: "100%" }}
             onClick={p.onDemo}
           >
-            Load example logo
+            Restore Coker example
           </button>
           <p className="hint">
             Drag paths or control handles to refine geometry. Undo with Ctrl / ⌘
             Z.
           </p>
-        </div>
+        </div>}
       </div>
       <footer className="panel-footer">
         <span>Logo Grid Generator</span>
