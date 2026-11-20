@@ -378,10 +378,10 @@ export default function App() {
   const onExport = async (format: "svg" | "png" | "mp4") => {
     if (!svgRef.current) return;
     if(mode==='compare'&&(!compareBefore||!compareAfter)){setError('Add both logos to export a comparison.');return;}
-    const exportSource=mode==='compare'?comparisonFrame(time):svgRef.current;
-    if(!exportSource)return;
     setError("");
     try {
+      const exportSource=mode==='compare'?comparisonFrame(time):svgRef.current;
+      if(!exportSource)return;
       if (format === "svg")
         download(
           new Blob(
@@ -430,8 +430,11 @@ export default function App() {
   const insert = () => {
     if (svgRef.current) {
       try {
+        if(mode==='compare'&&(!compareBefore||!compareAfter))throw new Error('Add both logos to insert a comparison.');
+        const source=mode==='compare'?comparisonFrame(time):svgRef.current;
+        if(!source)return;
         const svg = makeExportSVG(
-          svgRef.current,
+          source,
           settings,
           customization.canvasBackground,
         );
@@ -643,7 +646,7 @@ export default function App() {
           onUpload={() => fileRef.current?.click()}
           onDemo={() => loadSVG(demo, "Example / coker-logo.svg")}
           onExport={onExport}
-          hasSVG={!!displayed}
+          hasSVG={mode==='compare'?!!compareBefore&&!!compareAfter:!!displayed}
           fileName={fileName}
           pathCount={displayed?.paths.length || 0}
           plugin={isPlugin}

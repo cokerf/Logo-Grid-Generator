@@ -185,3 +185,5 @@ Drawing → Construction frameworks adds Modular, Isometric, Radial, Golden rati
 Export → Include canvas grid is enabled by default. It exports a grid that is switched on in the workspace and retains it through a clean video ending. Disable the export checkbox to omit it while keeping it visible in the editor. Tangent spines now default to 14% opacity with a thinner stroke; enable them manually, then adjust their opacity, weight and line style in Geometry. Shuffling never enables tangent spines.
 
 ![Original logo colours with construction overlays in the refreshed workspace](public/examples/colour-framework-workspace.jpg)
+
+![Side-by-side comparison with separate SVG inputs and grouped controls](public/examples/comparison-workspace.jpg)
